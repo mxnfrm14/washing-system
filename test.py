@@ -1,0 +1,77 @@
+import customtkinter as ctk
+from custom_button import create_custom_button
+
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("theme.json")
+
+class App(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("CustomTkinter Example")
+        self.geometry("600x500")
+        
+        # Create a list to track all custom components that need updating
+        self.custom_components = []
+        
+        my_font = ctk.CTkFont(family="EncodeSansExpanded-Regular", size=14, weight="normal")
+
+        # Rest of your initialization code
+        self.appearance_mode_label = ctk.CTkLabel(self, text="Appearance Mode:", anchor="w", font=my_font)
+        self.appearance_mode_label.pack(pady=(20, 0))
+        self.appearance_mode_optionemenu = ctk.CTkOptionMenu(self, values=["System","Light", "Dark"],
+                                                           command=self.change_appearance_mode_event, font=my_font, dropdown_font=my_font)
+        self.appearance_mode_optionemenu.pack(pady=(0, 20))
+
+        self.label = ctk.CTkLabel(self, text="Pump", font=my_font, anchor="w")
+        self.label.pack(pady=20)
+
+        self.button = ctk.CTkButton(self, text="Click Me", command=self.on_button_click)
+        self.button.pack(pady=20)
+
+        self.frame = ctk.CTkFrame(self, width=200, height=100)
+        self.frame.pack(pady=20, padx=20, fill="both", expand=True)
+        
+        # Create custom buttons and add them to our tracking list
+        self.btn1 = create_custom_button(
+            master=self.frame,
+            text="Télécharger",
+            font=my_font,
+            icon_path="assets/icons/save.png",
+            icon_side="left",
+            outlined=False,
+            command=self.on_button_click
+        )
+        self.btn1.pack(pady=10)
+        self.custom_components.append(self.btn1)  # Add to tracking list
+
+        self.btn2 = create_custom_button(
+            master=self.frame,
+            text="Annuler",
+            font=my_font,
+            icon_path="assets/icons/trash.png",
+            icon_side="left",
+            outlined=True,
+            command=self.on_button_click
+        )
+        self.btn2.pack(pady=10)
+        self.custom_components.append(self.btn2)  # Add to tracking list
+
+
+    def on_button_click(self):
+        self.label.configure(text="Button Clicked!")
+
+    def change_appearance_mode_event(self, new_appearance_mode: str):
+        ctk.set_appearance_mode(new_appearance_mode)
+        # Update all custom components
+        self.update_all_components()
+    
+    def update_all_components(self):
+        """Update all custom components when appearance mode changes"""
+        for component in self.custom_components:
+            if hasattr(component, 'update_colors'):
+                component.update_colors()
+
+# --- Main Execution ---
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
