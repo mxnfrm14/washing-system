@@ -22,6 +22,13 @@ class App(ctk.CTk):
                                                            command=self.change_appearance_mode_event, font=my_font, dropdown_font=my_font)
         self.appearance_mode_optionemenu.pack(pady=(0, 20))
 
+        self.scaling_label = ctk.CTkLabel(self, text="UI Scaling:", anchor="w")
+        self.scaling_label.pack(pady=(20, 0))
+        self.scaling_optionemenu = ctk.CTkOptionMenu(self, values=["80%", "90%", "100%", "110%", "120%"],
+                                                               command=self.change_scaling_event)
+        self.scaling_optionemenu.pack(pady=(0, 20))
+        
+
         self.label = ctk.CTkLabel(self, text="Pump", font=my_font, anchor="w")
         self.label.pack(pady=20)
 
@@ -70,6 +77,10 @@ class App(ctk.CTk):
         for component in self.custom_components:
             if hasattr(component, 'update_colors'):
                 component.update_colors()
+
+    def change_scaling_event(self, new_scaling: str):
+        new_scaling_float = int(new_scaling.replace("%", "")) / 100
+        ctk.set_widget_scaling(new_scaling_float)
 
 # --- Main Execution ---
 if __name__ == "__main__":
