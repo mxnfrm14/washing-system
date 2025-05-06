@@ -2,6 +2,11 @@ import customtkinter as ctk
 from controller import PageController
 from pages.start_page import StartPage
 from pages.general_settings import GeneralSettings
+from pages.washing_component import WashingComponent
+from pages.pumps import Pumps
+from pages.circuits import Circuits
+from pages.sequences import Sequences
+from pages.results import Results
 from custom_button import create_custom_button
 
 ctk.set_appearance_mode('System')  # Set the default appearance mode to System
@@ -46,6 +51,11 @@ class App(ctk.CTk):
         self.controller = PageController(self.container, self)
         self.controller.add_page("Accueil", StartPage)
         self.controller.add_page("Etape1", GeneralSettings)
+        self.controller.add_page("Etape2", WashingComponent)
+        self.controller.add_page("Etape3", Pumps)
+        self.controller.add_page("Etape4", Circuits)
+        self.controller.add_page("Etape5", Sequences)
+        self.controller.add_page("Results", Results)
 
         self.controller.show_page("Accueil")
 
