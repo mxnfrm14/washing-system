@@ -39,7 +39,7 @@ class App(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)  # Make the column expandable
         
         # Create main container for pages
-        self.container = ctk.CTkFrame(self, corner_radius=6)
+        self.container = ctk.CTkFrame(self, corner_radius=10)
         self.container.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         
         # Make the container take the whole space

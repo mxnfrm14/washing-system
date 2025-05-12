@@ -18,7 +18,7 @@ class WelcomeWindow(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         
         # Main container
-        container = ctk.CTkFrame(self, corner_radius=10)
+        container = ctk.CTkFrame(self)
         container.grid(row=0, column=0, sticky="nsew")
         container.grid_rowconfigure((0, 1), weight=1)
         container.grid_columnconfigure((0, 1), weight=1)

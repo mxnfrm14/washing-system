@@ -107,6 +107,10 @@ class CustomButton(ctk.CTkButton):
     def _check_appearance_mode(self):
         """Track appearance mode changes and update colors accordingly"""
         try:
+            # Check if widget still exists before doing anything
+            if not self.winfo_exists():
+                return
+                
             current_mode = ctk.get_appearance_mode()
             if self._appearance_mode != current_mode:
                 self._appearance_mode = current_mode
@@ -124,11 +128,19 @@ class CustomButton(ctk.CTkButton):
                 # Update the icon with new colors
                 self.refresh_icon()
         except Exception as e:
+            # Widget was destroyed or other error
+            if "invalid command name" in str(e):
+                return
             print(f"Error in appearance mode check: {e}")
+            return
         
         # Schedule the next check if widget still exists
-        if self.winfo_exists():
-            self._check_appearance_mode_timer = self.after(100, self._check_appearance_mode)
+        try:
+            if self.winfo_exists():
+                self._check_appearance_mode_timer = self.after(100, self._check_appearance_mode)
+        except Exception:
+            # Widget was destroyed, don't schedule
+            pass
 
     def update_colors(self):
         """Update colors based on current appearance mode"""

@@ -3,7 +3,7 @@ import os
 from PIL import Image
 
 class NavigationMenu(ctk.CTkFrame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, fg_color="#1A296C"):
         super().__init__(parent)
         self.controller = controller
         self.current_page = None
@@ -23,18 +23,6 @@ class NavigationMenu(ctk.CTkFrame):
         
         # Store indicator buttons
         self.indicators = []
-        
-        # Create title label
-        if hasattr(controller, 'fonts') and controller.fonts.get("default"):
-            self.title_label = ctk.CTkLabel(
-                self, 
-                text="Navigation", 
-                font=controller.fonts.get("default")
-            )
-        else:
-            self.title_label = ctk.CTkLabel(self, text="Navigation")
-        
-        self.title_label.pack(pady=10)
     
     def create_nav_indicators(self):
         """Create navigation indicators with circular buttons"""
@@ -99,8 +87,8 @@ class CircleIndicator(ctk.CTkFrame):
         self.circle_button = ctk.CTkButton(
             self,
             text="",
-            width=40,
-            height=40,
+            width=26,
+            height=26,
             corner_radius=20,
             fg_color="transparent",
             border_width=2,
