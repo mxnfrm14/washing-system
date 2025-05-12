@@ -1,10 +1,15 @@
 import customtkinter as ctk
+import os
+from PIL import Image
 
 class NavigationMenu(ctk.CTkFrame):
-    def __init__(self, parent, controller, current_page=None):
+    def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        self.current_page = current_page
+        self.current_page = None
+        
+        # Keep references to all images
+        self.images = {}
         
         # Page mapping - key: page_name, value: (display_name, page_index)
         self.pages = {
@@ -18,33 +23,45 @@ class NavigationMenu(ctk.CTkFrame):
         
         # Store indicator buttons
         self.indicators = []
-
-        #test
-        self.test_label = ctk.CTkLabel(self, text="Test Label", font=controller.fonts.get("default", None))
-        self.test_label.pack(pady=10)
         
-        # Create the navigation indicators
-        #self.create_nav_indicators()
+        # Create title label
+        if hasattr(controller, 'fonts') and controller.fonts.get("default"):
+            self.title_label = ctk.CTkLabel(
+                self, 
+                text="Navigation", 
+                font=controller.fonts.get("default")
+            )
+        else:
+            self.title_label = ctk.CTkLabel(self, text="Navigation")
+        
+        self.title_label.pack(pady=10)
     
     def create_nav_indicators(self):
         """Create navigation indicators with circular buttons"""
         # Main frame for indicators
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.nav_frame.pack(fill="x", padx=20, pady=10)
+        self.nav_frame.pack(padx=30, pady=10, anchor="center")
+        
+        # Clear any existing indicators to prevent duplicates
+        for indicator in self.indicators:
+            if indicator.winfo_exists():
+                indicator.destroy()
+        self.indicators.clear()
         
         # Create indicator for each page
         for page_name, (display_name, index) in self.pages.items():
-            # Create indicator frame
+            # Create indicator frame with proper callback
             indicator = CircleIndicator(
                 self.nav_frame, 
                 text=display_name,
                 index=index,
-                callback=lambda p=page_name: self.controller.show_page(p)
+                callback=lambda p=page_name: self.controller.show_page(p),
+                controller=self.controller
             )
-            indicator.grid(row=0, column=index, padx=30)
+            indicator.grid(row=0, column=index, padx=30,)
             self.indicators.append(indicator)
         
-        # Default active indicator
+        # Set initial active indicator
         if self.current_page and self.current_page in self.pages:
             self.set_active_indicator(self.pages[self.current_page][1])
         else:
@@ -70,65 +87,104 @@ class NavigationMenu(ctk.CTkFrame):
 class CircleIndicator(ctk.CTkFrame):
     """Circle indicator for navigation menu"""
     
-    def __init__(self, parent, text, index, callback):
+    def __init__(self, parent, text, index, callback, controller=None):
         super().__init__(parent, fg_color="transparent")
         self.index = index
         self.callback = callback
         self.active = False
         self.completed = False
+        self.controller = controller
         
-        # Create circle indicator
-        self.circle_frame = ctk.CTkFrame(self, width=40, height=40, corner_radius=20)
-        self.circle_frame.grid(row=0, column=0, padx=5, pady=5)
-        self.circle_frame.grid_propagate(False)  # Maintain fixed size
-        
-        # Create inner circle that shows active/completed state
-        self.inner_circle = ctk.CTkLabel(
-            self.circle_frame,
+        # Create circle button that will handle the visual states
+        self.circle_button = ctk.CTkButton(
+            self,
             text="",
-            width=36,
-            height=36,
-            corner_radius=18,
-            fg_color="transparent",  # Default state
+            width=40,
+            height=40,
+            corner_radius=20,
+            fg_color="transparent",
+            border_width=2,
+            hover=False  # Disable hover effect
         )
-        self.inner_circle.place(relx=0.5, rely=0.5, anchor="center")
+        self.circle_button.grid(row=0, column=0, padx=5, pady=5)
         
         # Label for the indicator
-        self.label = ctk.CTkLabel(self, text=text)
+        if controller and hasattr(controller, 'fonts') and controller.fonts.get("default"):
+            self.label = ctk.CTkLabel(self, text=text, font=controller.fonts.get("default"))
+        else:
+            self.label = ctk.CTkLabel(self, text=text)
+        
         self.label.grid(row=1, column=0, pady=(0, 5))
         
-        # Bind click events
-        self.circle_frame.bind("<Button-1>", lambda e: self.callback())
-        self.inner_circle.bind("<Button-1>", lambda e: self.callback())
-        self.label.bind("<Button-1>", lambda e: self.callback())
+        # Bind click events with error handling
+        self.bind_click_events()
         
         # Set initial state
         self.set_inactive()
     
+    def bind_click_events(self):
+        """Safely bind click events to all components"""
+        try:
+            self.circle_button.configure(command=self.safe_callback)
+            self.label.bind("<Button-1>", lambda e: self.safe_callback())
+        except Exception as e:
+            print(f"Error binding click events: {e}")
+    
+    def safe_callback(self):
+        """Execute callback with error handling"""
+        try:
+            if callable(self.callback):
+                self.callback()
+        except Exception as e:
+            print(f"Error in indicator callback: {e}")
+    
     def set_active(self):
-        """Set this indicator as active"""
+        """Set this indicator as active - filled circle"""
         self.active = True
         self.completed = False
-        self.inner_circle.configure(
-            fg_color="#F8F8F8" if ctk.get_appearance_mode() == "Dark" else "#243783",
-            text_color="#243783" if ctk.get_appearance_mode() == "Dark" else "#F8F8F8",
-            text=""
-        )
+        try:
+            # Get the appropriate color based on theme
+            fill_color = "#F8F8F8" if ctk.get_appearance_mode() == "Dark" else "#243783"
+            
+            # Fill the circle
+            self.circle_button.configure(
+                fg_color=fill_color,
+                border_width=0,
+                text="",
+                text_color=fill_color
+            )
+        except Exception as e:
+            print(f"Error setting active state: {e}")
     
     def set_inactive(self):
-        """Set this indicator as inactive"""
+        """Set this indicator as inactive - bordered circle only"""
         self.active = False
-        self.inner_circle.configure(
-            fg_color="transparent",
-            text=""
-        )
+        try:
+            # Get the appropriate border color based on theme
+            border_color = "#F8F8F8" if ctk.get_appearance_mode() == "Dark" else "#243783"
+            
+            # Create border effect
+            self.circle_button.configure(
+                fg_color="transparent",
+                border_width=2,
+                border_color=border_color,
+                text="",
+                text_color=border_color
+            )
+        except Exception as e:
+            print(f"Error setting inactive state: {e}")
     
     def set_completed(self):
         """Mark this indicator as completed"""
         self.completed = True
         self.active = False
-        self.inner_circle.configure(
-            fg_color="#4CAF50",  # Green color for completion
-            text="✓",
-            text_color="#FFFFFF"
-        )
+        try:
+            self.circle_button.configure(
+                fg_color="#4CAF50",
+                border_width=0,
+                text="✓",
+                text_color="#FFFFFF",
+                font=("Arial", 16, "bold")
+            )
+        except Exception as e:
+            print(f"Error setting completed state: {e}")

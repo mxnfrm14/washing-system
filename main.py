@@ -1,5 +1,5 @@
-from app import App
+from app_controller import AppController
 
 if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+    controller = AppController()
+    controller.start()

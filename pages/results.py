@@ -16,7 +16,7 @@ class Results(ctk.CTkFrame):
         # bouton_suivant.pack(pady=10)
 
         bouton_retour = ctk.CTkButton(self, text="Retour", font=controller.fonts.get("default", None),
-                                     command=lambda: controller.show_page("Etape5"))
+                                     command=lambda: controller.show_page("sequence"))
         bouton_retour.pack(pady=10)
     
     def update_appearance(self):

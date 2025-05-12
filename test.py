@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from PIL import Image
 from custom_button import create_custom_button
 
 ctk.set_appearance_mode("System")
@@ -37,6 +38,15 @@ class App(ctk.CTk):
 
         self.frame = ctk.CTkFrame(self, width=200, height=100)
         self.frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        self.bouton = ctk.CTkButton(self.frame, text="TEST", 
+                                    font=my_font,
+                                    image=ctk.CTkImage(light_image=Image.open("assets/icons/upload.png"),
+                                                    dark_image=Image.open("assets/icons/upload.png"), size=(20, 20)),
+                                    compound="left",
+                                    command=self.on_button_click)
+        self.bouton.pack(pady=10)
+        self.custom_components.append(self.bouton)  # Add to tracking list
         
         # Create custom buttons and add them to our tracking list
         self.btn1 = create_custom_button(

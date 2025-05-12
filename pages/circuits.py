@@ -8,15 +8,15 @@ class Circuits(ctk.CTkFrame):
         # self.app = None  # Will be set by the controller
         ctk.set_default_color_theme("theme.json")
 
-        label = ctk.CTkLabel(self, text="Étape 4 : Configuration", font=controller.fonts.get("title", None), anchor="w")
+        label = ctk.CTkLabel(self, text="Circuits", font=controller.fonts.get("title", None), anchor="w")
         label.pack(pady=40)
 
         bouton_suivant = ctk.CTkButton(self, text="Suivant", font=controller.fonts.get("default", None),
-                                      command=lambda: controller.show_page("Etape5"))
+                                      command=lambda: controller.show_page("sequence"))
         bouton_suivant.pack(pady=10)
 
         bouton_retour = ctk.CTkButton(self, text="Retour", font=controller.fonts.get("default", None),
-                                     command=lambda: controller.show_page("Etape3"))
+                                     command=lambda: controller.show_page("pumps"))
         bouton_retour.pack(pady=10)
     
     def update_appearance(self):
