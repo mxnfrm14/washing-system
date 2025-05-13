@@ -3,10 +3,12 @@ import os
 from PIL import Image
 
 class NavigationMenu(ctk.CTkFrame):
-    def __init__(self, parent, controller, fg_color="#1A296C"):
+    def __init__(self, parent, controller, appearance_mode):
         super().__init__(parent)
         self.controller = controller
         self.current_page = None
+        print(appearance_mode)
+        self.update_appearance(appearance_mode)
         
         # Keep references to all images
         self.images = {}
@@ -70,6 +72,24 @@ class NavigationMenu(ctk.CTkFrame):
             index = self.pages[current_page][1]
             self.set_active_indicator(index)
             self.current_page = current_page
+
+    def update_appearance(self, appearance_mode):
+        """Update the appearance of the navigation frame based on the appearance mode"""
+        self.appearance_mode = appearance_mode
+        
+        # Get the actual appearance mode (important for "System" setting)
+        actual_mode = ctk.get_appearance_mode()
+        
+        # Update frame color based on actual appearance mode
+        self.configure(fg_color="#1A296C" if actual_mode == "Dark" else "#F8F8F8")
+        
+        # Update indicators if they exist and are not empty
+        if hasattr(self, 'indicators') and self.indicators:
+            for indicator in self.indicators:
+                if hasattr(indicator, 'set_active') and indicator.active:
+                    indicator.set_active()
+                elif hasattr(indicator, 'set_inactive'):
+                    indicator.set_inactive()
 
 
 class CircleIndicator(ctk.CTkFrame):

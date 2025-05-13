@@ -2,8 +2,6 @@ import customtkinter as ctk
 from PIL import Image
 from custom_button import create_custom_button
 
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("theme.json")
 
 class WelcomeWindow(ctk.CTk):
     def __init__(self, controller):

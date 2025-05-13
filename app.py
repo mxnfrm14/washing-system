@@ -21,6 +21,7 @@ class App(ctk.CTk):
         self.title("Washing System")
         self.iconbitmap("assets/icons/logo.ico")
         self.geometry("1300x800")
+        self.resizable(False, False)
         
         # Store images as instance variables to prevent garbage collection
         self.images = {}
@@ -39,7 +40,7 @@ class App(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)  # Make the column expandable
         
         # Create main container for pages
-        self.container = ctk.CTkFrame(self, corner_radius=10)
+        self.container = ctk.CTkFrame(self)
         self.container.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         
         # Make the container take the whole space
@@ -50,7 +51,7 @@ class App(ctk.CTk):
         self.controller = PageController(self.container, self)
         
         # Create navigation menu - IMPORTANT: Use the NavigationMenu class, not a regular frame
-        self.navigation_frame = NavigationMenu(self, self.controller)
+        self.navigation_frame = NavigationMenu(self, self.controller, appearance_mode=ctk.get_appearance_mode())
         
         # Add pages to the controller
         self.controller.add_page("general_settings", GeneralSettings)
@@ -78,30 +79,16 @@ class App(ctk.CTk):
         self.settings_inner_frame.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         # Grid for 2 rows, 2 columns
-        self.settings_inner_frame.grid_rowconfigure((0,1), weight=0)
+        self.settings_inner_frame.grid_rowconfigure(0, weight=0)
         self.settings_inner_frame.grid_columnconfigure((0,1), weight=1)
 
-        # Widgets for appearance mode and scaling
-        self.appearance_mode_label = ctk.CTkLabel(
-            self.utils_frame, 
-            text="Appearance Mode:", 
-            anchor="w", 
-            font=self.fonts["default"]
-        )
-        
+        # Widgets for appearance mode and scaling 
         self.appearance_mode_optionemenu = ctk.CTkOptionMenu(
             self, 
-            values=["System", "Light", "Dark"],
+            values=["Light", "Dark"],
             command=self.change_appearance_mode, 
             font=self.fonts["default"], 
             dropdown_font=self.fonts["default"]
-        )
-        
-        self.scaling_label = ctk.CTkLabel(
-            self.utils_frame, 
-            text="UI Scaling:", 
-            anchor="w", 
-            font=self.fonts["default"]
         )
         
         self.scaling_optionemenu = ctk.CTkOptionMenu(
@@ -112,7 +99,7 @@ class App(ctk.CTk):
             dropdown_font=self.fonts["default"]
         )
         self.scaling_optionemenu.set("100%")  # Set default scaling
-        self.appearance_mode_optionemenu.set("System")  # Set default appearance mode
+        self.appearance_mode_optionemenu.set("Dark")  # Set default appearance mode
 
         # Load the trash icon safely
         try:
@@ -161,11 +148,9 @@ class App(ctk.CTk):
             self.utils_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 10))
             
             # OptionMenu widgets placed in settings_inner_frame
-            self.appearance_mode_label.grid(row=0, column=0, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
-            self.appearance_mode_optionemenu.grid(row=1, column=0, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
+            self.appearance_mode_optionemenu.grid(row=0, column=0, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
 
-            self.scaling_label.grid(row=0, column=1, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
-            self.scaling_optionemenu.grid(row=1, column=1, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
+            self.scaling_optionemenu.grid(row=0, column=1, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
             self.reset_button.grid(row=0, column=2, sticky="e", padx=10, in_=self.utils_frame)
 
         update_widget_visibility()  # Initial call to set visibility
@@ -199,7 +184,11 @@ class App(ctk.CTk):
         """Change the appearance mode globally and update the stored setting"""
         ctk.set_appearance_mode(new_appearance_mode)
         
-        # Update navigation state if needed
+        # Update the navigation frame's visual appearance
+        if hasattr(self.navigation_frame, 'update_appearance'):
+            self.navigation_frame.update_appearance(new_appearance_mode)
+    
+   # Update navigation state if needed
         if hasattr(self.navigation_frame, 'update_navigation_state') and self.controller.current_page:
             self.navigation_frame.update_navigation_state(self.controller.current_page)
     

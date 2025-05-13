@@ -52,6 +52,9 @@ class AppController:
         
         # Small delay to ensure cleanup
         time.sleep(0.1)
+
+        ctk.set_appearance_mode("Dark")
+        ctk.set_default_color_theme("theme.json")
         
         # Recreate the welcome window
         self.welcome_window = WelcomeWindow(self)
