@@ -43,13 +43,13 @@ class GeneralSettings(ctk.CTkFrame):
         self.form_container = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.form_container.pack(fill="both", expand=True, padx=200, pady=(40, 40))
 
-        # Configure grid for form
-        self.form_container.grid_columnconfigure(0, weight=0, minsize=150)  # Label column
-        self.form_container.grid_columnconfigure(1, weight=1)  # Input column
-        self.form_container.grid_columnconfigure(2, weight=1, minsize=150)  # Space column
-        self.form_container.grid_columnconfigure(3, weight=0, minsize=100)  # Unit column
-        self.form_container.grid_columnconfigure(4, weight=0, minsize=150)  # Second label column
-        self.form_container.grid_columnconfigure(5, weight=0)  # Second input column
+        # Configure grid for form - consistent column structure
+        self.form_container.grid_columnconfigure(0, weight=0, minsize=150)  # Left label column
+        self.form_container.grid_columnconfigure(1, weight=1)               # Left input column start
+        self.form_container.grid_columnconfigure(2, weight=0)               # Left input column end
+        self.form_container.grid_columnconfigure(3, weight=0, minsize=150)  # Right label column
+        self.form_container.grid_columnconfigure(4, weight=1)               # Right input column start
+        self.form_container.grid_columnconfigure(5, weight=0)               # Right input column end
 
         # Row 1: Liquid Name and Vehicle
         self.liquid_name_label = ctk.CTkLabel(
@@ -65,10 +65,10 @@ class GeneralSettings(ctk.CTkFrame):
             values=["Water", "Detergent", "Solvent"],
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
-            width=200
+            width=230
         )
         self.liquid_name_dropdown.set("Select liquid")
-        self.liquid_name_dropdown.grid(row=0, column=1, sticky="ew", pady=10, padx=(0, 20))
+        self.liquid_name_dropdown.grid(row=0, column=1, columnspan=2, sticky="w", pady=10)
 
         self.vehicle_label = ctk.CTkLabel(
             self.form_container, 
@@ -86,7 +86,7 @@ class GeneralSettings(ctk.CTkFrame):
             width=200
         )
         self.vehicle_dropdown.set("Select vehicle")
-        self.vehicle_dropdown.grid(row=0, column=4, sticky="ew", pady=10)
+        self.vehicle_dropdown.grid(row=0, column=4, columnspan=2, sticky="w", pady=10)
 
         # Row 2: Liquid Temperature and Tank Ref
         self.liquid_temp_label = ctk.CTkLabel(
@@ -98,7 +98,7 @@ class GeneralSettings(ctk.CTkFrame):
         self.liquid_temp_label.grid(row=1, column=0, sticky="w", pady=10)
 
         self.temp_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.temp_frame.grid(row=1, column=1, columnspan=2, sticky="ew", pady=10, padx=(0, 20))
+        self.temp_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=10)
         
         self.liquid_temp_entry = ctk.CTkEntry(
             self.temp_frame,
@@ -118,19 +118,18 @@ class GeneralSettings(ctk.CTkFrame):
         self.temp_unit_dropdown.set("°C")
         self.temp_unit_dropdown.pack(side="left")
 
-
-        # Fareniheit conversion label
-        self.fareniheit_label = ctk.CTkLabel(self.form_container,
+        # Fahrenheit conversion label
+        self.fareniheit_label = ctk.CTkLabel(
+            self.form_container,
             text="0.0°F",
             font=controller.fonts.get("default", None),
             text_color="gray"
         )
+        self.fareniheit_label.grid(row=2, column=1, columnspan=2, sticky="w", pady=(0, 10))
         
         # Add bindings to update the Fahrenheit value
         self.liquid_temp_entry.bind("<KeyRelease>", self.update_fahrenheit)
         self.temp_unit_dropdown.configure(command=self.update_fahrenheit)
-
-        self.fareniheit_label.grid(row=2, column=1, columnspan=2, sticky="w", padx=(0, 10))
 
         self.tank_ref_label = ctk.CTkLabel(
             self.form_container, 
@@ -148,11 +147,11 @@ class GeneralSettings(ctk.CTkFrame):
             width=200
         )
         self.tank_ref_dropdown.set("Select tank")
-        self.tank_ref_dropdown.grid(row=1, column=4, sticky="ew", pady=10)
+        self.tank_ref_dropdown.grid(row=1, column=4, columnspan=2, sticky="w", pady=10)
 
         # Tank ref details (Supplier and Volume)
         self.tank_details_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.tank_details_frame.grid(row=2, column=3, columnspan=2, sticky="w", pady=(0, 10))
+        self.tank_details_frame.grid(row=2, column=4, columnspan=2, sticky="w", pady=(0, 10))
         
         self.supplier_label = ctk.CTkLabel(
             self.tank_details_frame,
@@ -180,7 +179,7 @@ class GeneralSettings(ctk.CTkFrame):
         self.liquid_volume_label.grid(row=3, column=0, sticky="w", pady=10)
 
         self.volume_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.volume_frame.grid(row=3, column=1, columnspan=2, sticky="ew", pady=10, padx=(0, 20))
+        self.volume_frame.grid(row=3, column=1, columnspan=2, sticky="w", pady=10)
         
         self.liquid_volume_entry = ctk.CTkEntry(
             self.volume_frame,
@@ -210,7 +209,7 @@ class GeneralSettings(ctk.CTkFrame):
         self.power_voltage_label.grid(row=4, column=0, sticky="w", pady=10)
 
         self.voltage_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.voltage_frame.grid(row=4, column=1, columnspan=2, sticky="ew", pady=10, padx=(0, 20))
+        self.voltage_frame.grid(row=4, column=1, columnspan=2, sticky="w", pady=10)
         
         self.power_voltage_entry = ctk.CTkEntry(
             self.voltage_frame,
@@ -244,7 +243,7 @@ class GeneralSettings(ctk.CTkFrame):
             outlined=False,
             command=lambda: controller.show_page("washing_components")
         )
-        self.next_button.pack(side="right", padx=(0, 20), pady=(0, 20))
+        self.next_button.pack(side="right", padx=(0, 20), pady=(0, 30))
 
     def save_configuration(self):
         """Save the current configuration"""
