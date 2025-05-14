@@ -21,6 +21,10 @@ class CustomButton(ctk.CTkButton):
         # Keep track of this instance
         CustomButton._instances.append(self)
         
+        if font is None:
+            # Use default font if none provided
+            font = ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal")
+
         # Set default appearance values
         self.update_colors()
         
@@ -42,6 +46,7 @@ class CustomButton(ctk.CTkButton):
             text_color=self.text_color,
             hover_color=self.hover_color,
             command=command,
+            height=36,
             **kwargs
         )
         

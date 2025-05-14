@@ -32,7 +32,7 @@ class WelcomeWindow(ctk.CTk):
         load_config_button = create_custom_button(
             master=container,
             text="Charger la configuration",
-            font=ctk.CTkFont(family="EncodeSansExpanded-Regular", size=14, weight="normal"),
+            font=ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
             icon_path="assets/icons/upload.png",
             icon_side="left",
             outlined=True,
@@ -44,7 +44,7 @@ class WelcomeWindow(ctk.CTk):
         new_config_button = create_custom_button(
             master=container,
             text="Nouvelle configuration",
-            font=ctk.CTkFont(family="EncodeSansExpanded-Regular", size=14, weight="normal"),
+            font=ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
             icon_path="assets/icons/add.png",
             icon_side="left",
             outlined=False,

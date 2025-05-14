@@ -28,10 +28,10 @@ class App(ctk.CTk):
         
         # Define fonts
         self.fonts = {
-            "default": ctk.CTkFont(family="EncodeSansExpanded-Regular", size=14, weight="normal"),
-            "bold": ctk.CTkFont(family="EncodeSansExpanded-Bold", size=14, weight="bold"),
-            "title": ctk.CTkFont(family="EncodeSansExpanded-Bold", size=20, weight="bold"),
-            "subtitle": ctk.CTkFont(family="EncodeSansExpanded-Regular", size=16, weight="normal")
+            "default": ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
+            "bold": ctk.CTkFont(family="Encode Sans Expanded Bold", size=14, weight="bold"),
+            "title": ctk.CTkFont(family="Encode Sans Expanded Bold", size=24, weight="bold"),
+            "subtitle": ctk.CTkFont(family="Encode Sans Expanded", size=16, weight="normal")
         }
 
         # Configure grid layout

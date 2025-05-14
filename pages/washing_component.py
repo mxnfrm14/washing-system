@@ -73,59 +73,14 @@ class WashingComponent(ctk.CTkFrame):
         self.back_button.pack(side="left")
 
         # ========================== Content Area ==========================
-        # Form container
+        # Content frame for the main content
         self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.content_frame.pack(fill="both", expand=True, padx=150, pady=30)
 
         # Configure grid for form - consistent column structure
-        self.content_frame.grid_rowconfigure(0, weight=0)          # Select
-        self.content_frame.grid_rowconfigure(1, weight=0)          # Button
-        self.content_frame.grid_rowconfigure(2, weight=1)          # Table
+        self.content_frame.grid_rowconfigure(0, weight=0)          # Button
+        self.content_frame.grid_rowconfigure(1, weight=1)          # Table
         self.content_frame.grid_columnconfigure((0, 1), weight=1)  
-
-        # Select frame for component selection
-        self.select_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.select_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 20), pady=(0, 20))
-        
-        self.select_frame.grid_rowconfigure((0,1), weight=1)
-        self.select_frame.grid_columnconfigure((0, 1), weight=1)
-
-        # Label for component selection
-        self.use_case_label = ctk.CTkLabel(
-            self.select_frame, 
-            text="Use case", 
-            font=controller.fonts.get("default", None),
-            anchor="w"
-        )
-        self.use_case_label.grid(row=0, column=0, sticky="w", pady=10)
-
-        self.use_case_dropdown = ctk.CTkOptionMenu(
-            self.select_frame,
-            values=["Highway", "Autre"],
-            font=controller.fonts.get("default", None),
-            dropdown_font=controller.fonts.get("default", None),
-            width=200
-        )
-        self.use_case_dropdown.set("Select use case")  # Set default value
-        self.use_case_dropdown.grid(row=0, column=1, sticky="w", pady=10)
-
-        self.dirt_type_label = ctk.CTkLabel(
-            self.select_frame, 
-            text="Dirt type", 
-            font=controller.fonts.get("default", None),
-            anchor="w"
-        )
-        self.dirt_type_label.grid(row=1, column=0, sticky="w", pady=10)
-
-        self.dirt_type_dropdown = ctk.CTkOptionMenu(
-            self.select_frame,
-            values=["Dirt", "Autre"],
-            font=controller.fonts.get("default", None),
-            dropdown_font=controller.fonts.get("default", None),
-            width=200
-        )
-        self.dirt_type_dropdown.set("Select dirt type")
-        self.dirt_type_dropdown.grid(row=1, column=1, sticky="w", pady=10)
 
         # Button to add a new component
         self.add_component_button = create_custom_button(
@@ -137,7 +92,7 @@ class WashingComponent(ctk.CTkFrame):
             outlined=False,
             command=self.add_component
         )
-        self.add_component_button.grid(row=1, column=0, sticky="w", padx=20, pady=20)
+        self.add_component_button.grid(row=1, column=0, sticky="w")
 
         # Table for displaying components
         self.table_frame = ctk.CTkFrame(self.content_frame, fg_color="#F8F8F8")
@@ -145,8 +100,6 @@ class WashingComponent(ctk.CTkFrame):
 
         self.table_frame.grid_rowconfigure(0, weight=1)
         self.table_frame.grid_columnconfigure((0, 1, 2), weight=1)
-
-
 
 
         # Image

@@ -11,6 +11,7 @@ class GeneralSettings(ctk.CTkFrame):
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True)
 
+        # ============================ Title and Save Button ==========================
         # Top frame for title and save button
         self.top_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.top_frame.pack(fill="x", padx=40, pady=30)
@@ -39,6 +40,25 @@ class GeneralSettings(ctk.CTkFrame):
         self.divider = ctk.CTkFrame(self.main_container, height=2, corner_radius=0, fg_color="#F8F8F8")
         self.divider.pack(pady=(0, 20), fill="x")
 
+
+        # =========================== Navigation button ==========================
+        # Bottom frame for next button
+        self.bottom_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.bottom_frame.pack(fill="x", pady=30, padx=20, anchor="s", side="bottom")
+
+        # Next button
+        self.next_button = create_custom_button(
+            self.bottom_frame,
+            text="Next",
+            font=controller.fonts.get("default", None),
+            icon_path="assets/icons/next.png",
+            icon_side="right",
+            outlined=False,
+            command=lambda: controller.show_page("washing_components")
+        )
+        self.next_button.pack(side="right")
+
+        # =========================== Content Area ==========================
         # Form container
         self.form_container = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.form_container.pack(fill="both", expand=True, padx=200, pady=(40, 40))
@@ -83,7 +103,7 @@ class GeneralSettings(ctk.CTkFrame):
             values=["Car", "Truck", "Bus"],
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
-            width=200
+            width=230
         )
         self.vehicle_dropdown.set("Select vehicle")
         self.vehicle_dropdown.grid(row=0, column=4, columnspan=2, sticky="w", pady=10)
@@ -144,7 +164,7 @@ class GeneralSettings(ctk.CTkFrame):
             values=["Tank A", "Tank B", "Tank C"],
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
-            width=200
+            width=230
         )
         self.tank_ref_dropdown.set("Select tank")
         self.tank_ref_dropdown.grid(row=1, column=4, columnspan=2, sticky="w", pady=10)
@@ -229,22 +249,26 @@ class GeneralSettings(ctk.CTkFrame):
         self.voltage_unit_dropdown.set("V")
         self.voltage_unit_dropdown.pack(side="left")
 
-        # Bottom frame for next button
-        self.bottom_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.bottom_frame.pack(fill="x", pady=(30, 0))
-
-        # Next button
-        self.next_button = create_custom_button(
-            self.bottom_frame,
-            text="Next",
+        self.dirt_type_label = ctk.CTkLabel(
+            self.form_container, 
+            text="Dirt type", 
             font=controller.fonts.get("default", None),
-            icon_path="assets/icons/next.png",
-            icon_side="right",
-            outlined=False,
-            command=lambda: controller.show_page("washing_components")
+            anchor="w"
         )
-        self.next_button.pack(side="right", padx=(0, 20), pady=(0, 30))
+        self.dirt_type_label.grid(row=3, column=3, sticky="w", pady=10)
 
+        self.dirt_type_dropdown = ctk.CTkOptionMenu(
+            self.form_container,
+            values=["Dirt", "Autre"],
+            font=controller.fonts.get("default", None),
+            dropdown_font=controller.fonts.get("default", None),
+            width=230
+        )
+        self.dirt_type_dropdown.set("Select dirt type")
+        self.dirt_type_dropdown.grid(row=3, column=4, sticky="w", pady=10)  
+
+    
+    # =========================== Methodes ==========================
     def save_configuration(self):
         """Save the current configuration"""
         # Implement save functionality here
