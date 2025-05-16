@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from custom_button import create_custom_button
+from tabview import ThemedTabview
 
 class Results(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -52,8 +53,8 @@ class Results(ctk.CTkFrame):
             self.bottom_frame,
             text="Generate Report",
             font=controller.fonts.get("default", None),
-            icon_path="assets/icons/upload.png",
-            icon_side="right",
+            icon_path="assets/icons/file.png",
+            icon_side="left",
             outlined=False,
             command=lambda: print("Report generated!")
         )
@@ -74,9 +75,21 @@ class Results(ctk.CTkFrame):
         # ========================== Content Area ==========================
         # Content frame for the main content
         self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.content_frame.pack(fill="both", expand=True, padx=150, pady=30)
+        self.content_frame.pack(fill="both", expand=True, padx=70, pady=10)
 
-        # Configure grid for content frame
+        self.tab_view = ThemedTabview(self.content_frame)
+        self.tab_view.pack(fill="both", expand=True)
+        self.tab1 = self.tab_view.add("Configuration Results")
+        self.tab2 = self.tab_view.add("Comparative Analysis")
+
+        # Add widgets to the tabs
+        label2 = ctk.CTkLabel(self.tab1, text="Configuration Content")
+        label2.pack(pady=20)
+        
+        label3 = ctk.CTkLabel(self.tab2, text="Results Content")
+        label3.pack(pady=20)
+
+
     
     def update_appearance(self):
         """Update any appearance-dependent elements"""

@@ -1,15 +1,16 @@
 import customtkinter as ctk
 from PIL import Image
 from custom_button import create_custom_button
+from tabview import ThemedTabview
 
-ctk.set_appearance_mode("System")
+ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme("theme.json")
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("CustomTkinter Example")
-        self.geometry("600x500")
+        self.geometry("600x800")
         
         # Create a list to track all custom components that need updating
         self.custom_components = []
@@ -19,7 +20,7 @@ class App(ctk.CTk):
         # Rest of your initialization code
         self.appearance_mode_label = ctk.CTkLabel(self, text="Appearance Mode:", anchor="w", font=my_font)
         self.appearance_mode_label.pack(pady=(20, 0))
-        self.appearance_mode_optionemenu = ctk.CTkOptionMenu(self, values=["System","Light", "Dark"],
+        self.appearance_mode_optionemenu = ctk.CTkOptionMenu(self, values=["Light", "Dark"],
                                                            command=self.change_appearance_mode_event, font=my_font, dropdown_font=my_font)
         self.appearance_mode_optionemenu.pack(pady=(0, 20))
 
@@ -72,6 +73,26 @@ class App(ctk.CTk):
         )
         self.btn2.pack(pady=10)
         self.custom_components.append(self.btn2)  # Add to tracking list
+
+
+        # Create tabview
+        tabview = ThemedTabview(self)
+        tabview.pack(padx=20, pady=20, fill="both", expand=True)
+        
+        # Add tabs
+        tab1 = tabview.add("General")
+        tab2 = tabview.add("Configuration")
+        tab3 = tabview.add("Results")
+        
+        # Add content to tabs (using your fonts if needed)
+        label1 = ctk.CTkLabel(tab1, text="General Settings Content")
+        label1.pack(pady=20)
+        
+        label2 = ctk.CTkLabel(tab2, text="Configuration Content")
+        label2.pack(pady=20)
+        
+        label3 = ctk.CTkLabel(tab3, text="Results Content")
+        label3.pack(pady=20)
 
 
     def on_button_click(self):
