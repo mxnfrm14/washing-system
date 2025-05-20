@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from PIL import Image
-from custom_button import create_custom_button
-from tabview import ThemedTabview
+from components.custom_button import create_custom_button
+from components.tabview import ThemedTabview
 
 ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme("theme.json")
@@ -69,7 +69,7 @@ class App(ctk.CTk):
             icon_path="assets/icons/trash.png",
             icon_side="left",
             outlined=True,
-            command=self.on_button_click
+            command=self.quit
         )
         self.btn2.pack(pady=10)
         self.custom_components.append(self.btn2)  # Add to tracking list
@@ -112,6 +112,9 @@ class App(ctk.CTk):
     def change_scaling_event(self, new_scaling: str):
         new_scaling_float = int(new_scaling.replace("%", "")) / 100
         ctk.set_widget_scaling(new_scaling_float)
+
+    def quit(self):
+        self.destroy() 
 
 # --- Main Execution ---
 if __name__ == "__main__":

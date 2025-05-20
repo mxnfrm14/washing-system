@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from pages.welcome_window import WelcomeWindow
 from app import App
-from custom_button import CustomButton
+from components.custom_button import CustomButton
 import time
 
 class AppController:
@@ -11,7 +11,7 @@ class AppController:
     """
     def __init__(self):
         # Initialize custom themes and appearance
-        ctk.set_appearance_mode("System")
+        ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("theme.json")
         
         # Create the welcome window
@@ -26,39 +26,25 @@ class AppController:
     
     def show_main_app(self):
         """Create and show the main application"""
-        # Destroy the welcome window instead of hiding it
+        # from custom_button import CustomButton
+        # CustomButton.clear_all_instances()
+        
+        # Hide the welcome window instead of destroying it
         if self.welcome_window:
             self.welcome_window.destroy()
-            self.welcome_window = None
-        
-        # Small delay to ensure cleanup
-        time.sleep(0.1)
         
         # Create and show the main app
         self.main_app = App()
-        self.main_app.protocol("WM_DELETE_WINDOW", self.on_main_app_close)
-        
-        # Refresh all custom button icons for new window context
-        CustomButton.refresh_all_icons()
-        
         self.main_app.mainloop()
-    
+
     def on_main_app_close(self):
         """Handle main app close event"""
-        # Destroy the main app
+        # Destroy main app
         if self.main_app:
             self.main_app.destroy()
             self.main_app = None
         
-        # Small delay to ensure cleanup
-        time.sleep(0.1)
-
-        ctk.set_appearance_mode("Dark")
-        ctk.set_default_color_theme("theme.json")
         
-        # Recreate the welcome window
-        self.welcome_window = WelcomeWindow(self)
-        self.welcome_window.mainloop()
     
     def load_configuration(self):
         """Load a configuration file from disk"""

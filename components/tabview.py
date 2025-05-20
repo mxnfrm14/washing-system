@@ -190,6 +190,15 @@ class ThemedTabview(ctk.CTkFrame):
                     font=ctk.CTkFont(size=13, weight="normal")
                 )
     
+    def destroy(self):
+        """Clean up resources when destroying the widget"""
+        try:
+            if hasattr(self, '_after_id'):
+                self.after_cancel(self._after_id)
+        except Exception:
+            pass
+        super().destroy()
+    
     def _check_appearance_mode(self):
         """Monitor appearance mode changes"""
         try:
@@ -201,8 +210,15 @@ class ThemedTabview(ctk.CTkFrame):
                 self._appearance_mode = current_mode
                 self._update_button_colors()
             
-            self.after(200, self._check_appearance_mode)
-        except:
+            # Instead of scheduling directly, store the after ID
+            if hasattr(self, '_after_id'):
+                try:
+                    self.after_cancel(self._after_id)
+                except Exception:
+                    pass
+            
+            self._after_id = self.after(200, self._check_appearance_mode)
+        except Exception:
             pass
     
     def tab(self, name):

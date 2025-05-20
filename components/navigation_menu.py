@@ -1,12 +1,13 @@
 import customtkinter as ctk
-import os
-from PIL import Image
+from utils.appearance_manager import AppearanceManager
+
 
 class NavigationMenu(ctk.CTkFrame):
     def __init__(self, parent, controller, appearance_mode):
         super().__init__(parent)
         self.controller = controller
         self.current_page = None
+        AppearanceManager.register(self)
         print(appearance_mode)
         self.update_appearance(appearance_mode)
         
@@ -81,7 +82,7 @@ class NavigationMenu(ctk.CTkFrame):
         actual_mode = ctk.get_appearance_mode()
         
         # Update frame color based on actual appearance mode
-        self.configure(fg_color="#1A296C" if actual_mode == "Dark" else "#F8F8F8")
+        self.configure(fg_color="#1A296C" if actual_mode == "Dark" else "#FFFFFF")
         
         # Update indicators if they exist and are not empty
         if hasattr(self, 'indicators') and self.indicators:

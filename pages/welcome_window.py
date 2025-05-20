@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from PIL import Image
-from custom_button import create_custom_button
+from components.custom_button import CustomButton
 
 
 class WelcomeWindow(ctk.CTk):
@@ -16,21 +16,21 @@ class WelcomeWindow(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         
         # Main container
-        container = ctk.CTkFrame(self)
-        container.grid(row=0, column=0, sticky="nsew")
-        container.grid_rowconfigure((0, 1), weight=1)
-        container.grid_columnconfigure((0, 1), weight=1)
+        self.container = ctk.CTkFrame(self)
+        self.container.grid(row=0, column=0, sticky="nsew")
+        self.container.grid_rowconfigure((0, 1), weight=1)
+        self.container.grid_columnconfigure((0, 1), weight=1)
 
         # Logo
         self.logo = ctk.CTkImage(light_image=Image.open("assets/images/logo_white.png"),
                             dark_image=Image.open("assets/images/logo_blue.png"), 
                             size=(300, 200))
-        logo_label = ctk.CTkLabel(self, text="", image=self.logo, compound="top")
-        logo_label.grid(row=0, column=0, pady=(0, 70))
+        self.logo_label = ctk.CTkLabel(self, text="", image=self.logo, compound="top")
+        self.logo_label.grid(row=0, column=0, pady=(0, 70))
 
         # Load Config Button
-        load_config_button = create_custom_button(
-            master=container,
+        self.load_config_button = CustomButton(
+            master=self.container,
             text="Charger la configuration",
             font=ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
             icon_path="assets/icons/upload.png",
@@ -38,11 +38,11 @@ class WelcomeWindow(ctk.CTk):
             outlined=True,
             command=self.load_config
         )
-        load_config_button.grid(row=1, column=0, pady=10)
+        self.load_config_button.grid(row=1, column=0, pady=10)
 
         # New Config Button
-        new_config_button = create_custom_button(
-            master=container,
+        self.new_config_button = CustomButton(
+            master=self.container,
             text="Nouvelle configuration",
             font=ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
             icon_path="assets/icons/add.png",
@@ -50,10 +50,16 @@ class WelcomeWindow(ctk.CTk):
             outlined=False,
             command=self.launch_main_app
         )
-        new_config_button.grid(row=1, column=1, pady=10)
+        self.new_config_button.grid(row=1, column=1, pady=10)
 
     def launch_main_app(self):
         """Launch the main application via the controller"""
+        self.load_config_button.destroy()
+        self.new_config_button.destroy()
+        self.logo_label.destroy()
+
+
+
         self.controller.show_main_app()
 
     def load_config(self):

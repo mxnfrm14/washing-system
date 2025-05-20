@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from custom_button import create_custom_button
+from components.custom_button import CustomButton
 
 class Circuits(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -26,7 +26,7 @@ class Circuits(ctk.CTkFrame):
         self.title_label.pack(side="left")
 
         # Save configuration button
-        self.save_button = create_custom_button(
+        self.save_button = CustomButton(
             self.top_frame,
             text="Save configuration",
             font=controller.fonts.get("default", None),
@@ -48,7 +48,7 @@ class Circuits(ctk.CTkFrame):
         self.bottom_frame.pack(fill="x", pady=30, padx=20, anchor="s", side="bottom")
 
         # Next button
-        self.next_button = create_custom_button(
+        self.next_button = CustomButton(
             self.bottom_frame,
             text="Next",
             font=controller.fonts.get("default", None),
@@ -60,7 +60,7 @@ class Circuits(ctk.CTkFrame):
         self.next_button.pack(side="right")
 
         # Back button
-        self.back_button = create_custom_button(
+        self.back_button = CustomButton(
             self.bottom_frame,
             text="Back",
             font=controller.fonts.get("default", None),
