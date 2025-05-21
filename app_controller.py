@@ -31,7 +31,9 @@ class AppController:
         
         # Hide the welcome window instead of destroying it
         if self.welcome_window:
-            self.welcome_window.destroy()
+             self.welcome_window.destroy()
+            # self.welcome_window.withdraw() # Hide root window
+            # self.welcome_window.quit() # End the mainloop and stop tcl interpreter commands
         
         # Create and show the main app
         self.main_app = App()

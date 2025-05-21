@@ -35,9 +35,6 @@ class CustomTable(ctk.CTkFrame):
         
         # Initialize appearance mode at the beginning
         self.appearance_mode = appearance_mode
-        print(appearance_mode)
-        # Removed the premature call to update_appearance()
-
         
         # Store references to rows, cells and icons
         self.header_cells = []
@@ -68,38 +65,42 @@ class CustomTable(ctk.CTkFrame):
     
     def _calculate_column_widths(self) -> List[int]:
         """Calculate optimal column widths based on headers and available width"""
-        # Reserve space for action column (fixed width)
-        action_width = 50
+        # Set action column width (fixed, making it a bit wider for better button placement)
+        action_width = 70
         available_width = self.width - action_width
         
         if not self.headers:
             return [available_width, action_width]
         
-        # Get a test font to measure text width
-        font = ctk.CTkFont(weight="bold")
+        # More accurate width calculation based on header text length
+        # Adjusting for font size and padding
+        header_widths = []
+        for header in self.headers:
+            # Estimate width based on character count (12px font with bold)
+            char_width = 8  # Adjusted for a more accurate pixel per character estimation
+            estimated_width = len(header) * char_width + 20  # Add padding
+            header_widths.append(estimated_width)
         
-        # Estimate minimum width needed for each header (assuming characters are ~10px wide)
-        # This is an approximation since CTk doesn't have direct text measurement
-        header_widths = [len(header) * 10 for header in self.headers]
-        
-        # Ensure minimum width for each column (at least 80px)
-        min_width = 80
+        # Set a reasonable minimum width
+        min_width = 60  # Reduced from 80px
         header_widths = [max(w, min_width) for w in header_widths]
         
-        # Calculate total width needed
+        # Calculate total needed width
         total_needed = sum(header_widths)
         
-        # If we need more than available, adjust proportionally
+        # If total exceeds available, scale down proportionally
         if total_needed > available_width:
             scale_factor = available_width / total_needed
             header_widths = [int(w * scale_factor) for w in header_widths]
-        # If we need less, distribute remaining space proportionally
+        # If there's extra space, distribute evenly instead of proportionally
         elif total_needed < available_width:
-            remaining = available_width - total_needed
-            # Distribute remaining space proportionally to column width
-            for i in range(len(header_widths)):
-                proportion = header_widths[i] / total_needed if total_needed > 0 else 1/len(header_widths)
-                header_widths[i] += int(remaining * proportion)
+            extra_per_column = int((available_width - total_needed) / len(header_widths))
+            header_widths = [w + extra_per_column for w in header_widths]
+            
+            # Add any remaining pixels to the first column
+            remaining = available_width - sum(header_widths)
+            if remaining > 0 and len(header_widths) > 0:
+                header_widths[0] += remaining
         
         # Add action column width
         return header_widths + [action_width]
@@ -130,45 +131,50 @@ class CustomTable(ctk.CTkFrame):
         # Make header frame have fixed width columns
         self.header_frame.pack_propagate(False)
         
-        # Set up columns in header frame
+        # Set up columns in header frame - all columns have a fixed width
         for i, width in enumerate(self.column_widths):
             self.header_frame.columnconfigure(i, weight=0, minsize=width)
         
-        # Add header cells
+        # Add header cells with center alignment to match rows
         for i, header in enumerate(self.headers):
             cell = ctk.CTkLabel(
                 self.header_frame,
                 text=header,
                 fg_color="transparent",
                 text_color=colors["header_fg"],
-                font=ctk.CTkFont(weight="bold"),
-                anchor="w",
+                font=ctk.CTkFont(family="Encode Sans Expanded Bold", size=12, weight="bold"),
+                anchor="center",  # Changed to center for consistency with rows
                 padx=10,
                 width=self.column_widths[i]
             )
             cell.grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
             self.header_cells.append(cell)
         
-        # Add "Actions" header for the last column
+        # Add "Actions" header for the last column - right aligned
         actions_header = ctk.CTkLabel(
             self.header_frame,
             text="Actions",
             fg_color="transparent",
             text_color=colors["header_fg"],
-            font=ctk.CTkFont(weight="bold"),
+            font=ctk.CTkFont(family="Encode Sans Expanded Bold", size=12, weight="bold"),
             anchor="center",
             width=self.column_widths[-1]
         )
         actions_header.grid(row=0, column=len(self.headers), sticky="nsew", padx=1, pady=1)
         self.header_cells.append(actions_header)
         
-        # Create rows container with the same width
-        self.rows_container = ctk.CTkFrame(
+        # Create rows container with scrolling capability
+        self.rows_container = ctk.CTkScrollableFrame(
             self.table_container, 
             fg_color="transparent",
-            width=self._get_total_width()
+            width=self._get_total_width(),
+            corner_radius=0  # No corner radius for the scrollable frame
         )
         self.rows_container.pack(fill="both", expand=True, padx=0, pady=0)
+        
+        # Configure the scrollable frame to not have extra right padding
+        # This ensures the action buttons appear at the very right
+        self.rows_container._scrollbar.grid_configure(padx=(0, 0))
         
         # Add initial data rows if any
         for row_data in self.data:
@@ -210,7 +216,7 @@ class CustomTable(ctk.CTkFrame):
         row_frame.pack(fill="x", padx=0, pady=0)
         row_frame.pack_propagate(False)
         
-        # Configure columns in row to match header
+        # Configure columns in row to match header - all with fixed width
         for i, width in enumerate(self.column_widths):
             row_frame.columnconfigure(i, weight=0, minsize=width)
         
@@ -220,56 +226,60 @@ class CustomTable(ctk.CTkFrame):
             # Get cell value or empty string if not found
             cell_value = str(row_data.get(header, ""))
             
-            # Create cell label
+            # Create cell label with center alignment
             cell = ctk.CTkLabel(
                 row_frame,
                 text=cell_value,
                 fg_color="transparent",
                 text_color=colors["row_fg"],
-                anchor="w",
+                font=ctk.CTkFont(family="Encode Sans Expanded", size=12),
+                anchor="center",
                 padx=10,
                 width=self.column_widths[i]
             )
             cell.grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
             row_cells.append(cell)
         
-        # Create actions container
+        # Create actions container with right alignment
         actions_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
-        actions_frame.grid(row=0, column=len(self.headers), sticky="nsew", padx=1, pady=1)
+        actions_frame.grid(row=0, column=len(self.headers), sticky="e", padx=(0, 5), pady=1)
         
         # Add edit and delete buttons
-        # Use current appearance mode directly
         actual_mode = ctk.get_appearance_mode().lower()
         edit_icon = self.icons.get("edit", {}).get(actual_mode)
         delete_icon = self.icons.get("delete", {}).get(actual_mode)
         
+        # Create a button container to ensure buttons are aligned right
+        button_container = ctk.CTkFrame(actions_frame, fg_color="transparent")
+        button_container.pack(side="right", padx=0)
+        
         edit_btn = ctk.CTkButton(
-            actions_frame,
+            button_container,
             text="",
             image=edit_icon,
-            width=30,
-            height=30,
+            width=25,
+            height=25,
             fg_color=colors["button_bg"],
             hover_color=colors["button_hover"],
             border_width=0,
             corner_radius=6,
             command=lambda idx=index: self._handle_edit(idx)
         )
-        edit_btn.pack(side="left", padx=1)
+        edit_btn.pack(side="left", padx=(0, 2))
         
         delete_btn = ctk.CTkButton(
-            actions_frame,
+            button_container,
             text="",
             image=delete_icon,
-            width=30,
-            height=30,
+            width=25,
+            height=25,
             fg_color=colors["button_bg"],
             hover_color=colors["button_hover"],
             border_width=0,
             corner_radius=6,
             command=lambda idx=index: self._handle_delete(idx)
         )
-        delete_btn.pack(side="left", padx=1)
+        delete_btn.pack(side="left", padx=(0, 0))
         
         # Create row data entry
         row_entry = {
@@ -387,8 +397,8 @@ class CustomTable(ctk.CTkFrame):
         
         if mode == "Dark":
             return {
-                "header_bg": "#243783",
-                "header_fg": "#F8F8F8",
+                "header_bg": "#F8F8F8",
+                "header_fg": "#243783",
                 "row_bg_even": "#1A296C",
                 "row_bg_odd": "#243783",
                 "row_fg": "#F8F8F8",

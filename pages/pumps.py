@@ -92,47 +92,42 @@ class Pumps(ctk.CTkFrame):
             outlined=False,
             command=self.add_row
         )
-        self.add_button.grid(row=0, column=0, pady=(0, 20), sticky="n")
+        self.add_button.grid(row=0, column=0, pady=(0, 30), sticky="n")
 
         # Define sample headers and data
-        headers = ["Component", "Nozzle Ref", "D_C_N (mm)", "DZ_P_N (mm)", "Intergration Angle", "Targeted Washing Preformance"]
+        headers = ["Pump Category", "Number of output", "Pump Name", "Number of WC (O1)", "Number of WC (O2)"]
         data = [
             {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "1243",
-                "DZ_P_N (mm)": "1243",
-                "Intergration Angle": "34",
-                "Targeted Washing Preformance": "53"
+                "Pump Category": "Pump Category",
+                "Number of output": "2",
+                "Pump Name": "AWEKL 123133112 DE",
+                "Number of WC (O1)": "3",
+                "Number of WC (O2)": "1"
             },
             {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "124334",
-                "DZ_P_N (mm)": "324",
-                "Intergration Angle": "90",
-                "Targeted Washing Preformance": "80"
+                "Pump Category": "Pump Category",
+                "Number of output": "1",
+                "Pump Name": "AWEKL 123133112 DE",
+                "Number of WC (O1)": "2",
+                "Number of WC (O2)": "0"
             },
             {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "1234",
-                "DZ_P_N (mm)": "4321",
-                "Intergration Angle": "65",
-                "Targeted Washing Preformance": "67"
+                "Pump Category": "Pump Category",
+                "Number of output": "1",
+                "Pump Name": "AWEKL 123133112 DE",
+                "Number of WC (O1)": "2",
+                "Number of WC (O2)": "0"
             }
         ]
 
         # Define custom column widths based on content needs
         # The values are proportional to the total table width
         column_widths = [
-            120,  # Component
-            120,  # Nozzle Ref
-            100,  # D_C_N (mm)
-            100,  # DZ_P_N (mm)
-            140,  # Integration Angle
-            180,  # Targeted Washing Performance
-            40   # Actions column (automatically added)
+            140,  # Pump Category
+            140,  # Number of output
+            140,  # Pump Name
+            140,  # Number of WC (O1)
+            140,  # Number of WC (O2)
         ]
 
          # Create the custom table with specified column widths
@@ -141,7 +136,7 @@ class Pumps(ctk.CTkFrame):
                 self.content_frame,
                 headers=headers,
                 data=data,
-                width=600,
+                width=800,
                 edit_command=self.edit_row,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
@@ -155,12 +150,11 @@ class Pumps(ctk.CTkFrame):
     def add_row(self):
         """Add a new row to the table"""
         new_data = {
-            "Component": "New Component",
-            "Nozzle Ref": "Nozzle Ref",
-            "D_C_N (mm)": "D_C_N (mm)",
-            "DZ_P_N (mm)": "DZ_P_N (mm)",
-            "Intergration Angle": "Intergration Angle",
-            "Targeted Washing Preformance": "Targeted Washing Preformance"
+            "Pump Category": "New Pump Category",
+            "Number of output": "2",
+            "Pump Name": "Pump Name",
+            "Number of WC (O1)": "1",
+            "Number of WC (O2)": "2"
         }
         self.table.add_row(new_data)
     
@@ -172,7 +166,7 @@ class Pumps(ctk.CTkFrame):
         
         # Update the row with new data (in a real app, this would come from a dialog)
         updated_data = row_data.copy()
-        updated_data["Nozzle Ref"] = "edited"
+        updated_data["Number of output"] = "edited"
         self.table.update_row(index, updated_data)
     
     def delete_row(self, index, row_data):

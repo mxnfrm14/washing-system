@@ -123,17 +123,17 @@ class WashingComponent(ctk.CTkFrame):
             outlined=False,
             command=self.add_row
         )
-        self.add_button.grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 10))
+        self.add_button.grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 30))
 
         # Define custom column widths based on content needs
         # The values are proportional to the total table width
         column_widths = [
-            120,  # Component
+            140,  # Component
             120,  # Nozzle Ref
             100,  # D_C_N (mm)
             100,  # DZ_P_N (mm)
             140,  # Integration Angle
-            180,  # Targeted Washing Performance
+            220,  # Targeted Washing Performance
             40   # Actions column (automatically added)
         ]
 
@@ -143,11 +143,11 @@ class WashingComponent(ctk.CTkFrame):
                 self.content_frame,
                 headers=headers,
                 data=data,
-                width=600,
+                width=840,
                 edit_command=self.edit_row,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                column_widths=column_widths,  # Add custom column widths
+                # column_widths=column_widths,  # Add custom column widths
             )
             self.table.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
         except Exception as e:
@@ -165,10 +165,10 @@ class WashingComponent(ctk.CTkFrame):
         new_data = {
             "Component": "New Component",
             "Nozzle Ref": "Nozzle Ref",
-            "D_C_N (mm)": "D_C_N (mm)",
-            "DZ_P_N (mm)": "DZ_P_N (mm)",
-            "Intergration Angle": "Intergration Angle",
-            "Targeted Washing Preformance": "Targeted Washing Preformance"
+            "D_C_N (mm)": "123",
+            "DZ_P_N (mm)": "345",
+            "Intergration Angle": "89",
+            "Targeted Washing Preformance": "90"
         }
         self.table.add_row(new_data)
     
