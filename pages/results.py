@@ -46,7 +46,7 @@ class Results(ctk.CTkFrame):
         # =========================== Navigation Buttons ==========================
         # Bottom frame for navigation buttons
         self.bottom_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.bottom_frame.pack(fill="x", pady=30, padx=20, anchor="s", side="bottom")
+        self.bottom_frame.pack(fill="x", pady=(10,20), padx=20, anchor="s", side="bottom")
 
         # Next button
         self.next_button = CustomButton(
