@@ -284,9 +284,9 @@ class CircuitDesigner(ctk.CTkFrame):
             if mode == "delete":
                 self.canvas.config(cursor="X_cursor")
             elif mode == "connect":
-                self.canvas.config(cursor="hand2")
+                self.canvas.config(cursor="pencil")
             elif mode == "move":
-                self.canvas.config(cursor="hand1")
+                self.canvas.config(cursor="fleur")
             else:
                 self.canvas.config(cursor="arrow")
         else:
@@ -647,7 +647,7 @@ class CircuitDesigner(ctk.CTkFrame):
         item_x, item_y = self.placed_items[item_id]['coords']
         self._drag_data["offset_x"] = x - item_x
         self._drag_data["offset_y"] = y - item_y
-        self.canvas.config(cursor="grabbing")
+        # self.canvas.config(cursor="grab")
     
     def perform_drag(self, x, y):
         """Perform drag operation"""
