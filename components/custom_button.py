@@ -15,7 +15,7 @@ class CustomButton(ctk.CTkButton):
         cls._instances.clear()
         
     def __init__(self, master, text, font=None, icon_path=None, icon_size=(20, 20), 
-                 icon_side="left", outlined=False, command=None, **kwargs):
+                 icon_side="left", outlined=False, command=None, height=36, **kwargs):
         self.icon_path = icon_path
         self.icon_size = icon_size
         self.outlined = outlined
@@ -41,6 +41,12 @@ class CustomButton(ctk.CTkButton):
         if "compound" not in kwargs_copy:
             kwargs_copy["compound"] = self.icon_side if self.icon else "center"
         
+        # Remove height from kwargs to avoid duplicate param error
+        if 'height' in kwargs_copy:
+            height = kwargs_copy.pop('height')
+        else:
+            height = 36  # Default height
+
         # Initialize button with safe parameters
         super().__init__(
             master=master,
@@ -53,7 +59,7 @@ class CustomButton(ctk.CTkButton):
             text_color=self.text_color,
             hover_color=self.hover_color,
             command=command,
-            height=36,
+            height=height,
             **kwargs_copy
         )
         

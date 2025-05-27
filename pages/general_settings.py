@@ -98,15 +98,13 @@ class GeneralSettings(ctk.CTkFrame):
         )
         self.vehicle_label.grid(row=0, column=3, sticky="w", pady=10)
 
-        self.vehicle_dropdown = ctk.CTkOptionMenu(
+        self.vehicle_entry = ctk.CTkEntry(
             self.form_container,
-            values=["Car", "Truck", "Bus"],
+            placeholder_text="Vehicle",
             font=controller.fonts.get("default", None),
-            dropdown_font=controller.fonts.get("default", None),
             width=230
         )
-        self.vehicle_dropdown.set("Select vehicle")
-        self.vehicle_dropdown.grid(row=0, column=4, columnspan=2, sticky="w", pady=10)
+        self.vehicle_entry.grid(row=0, column=4, columnspan=2, sticky="w", pady=10)
 
         # Row 2: Liquid Temperature and Tank Ref
         self.liquid_temp_label = ctk.CTkLabel(
