@@ -3,6 +3,7 @@ import tkinter
 from components.custom_button import CustomButton
 from utils.open_image import open_icon
 from components.priority_selector import PrioritySelector
+from components.sequence_visualizer import SequenceVisualizer
 
 class Sequences(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -150,25 +151,31 @@ class Sequences(ctk.CTkFrame):
         # Initialize task rows list
         self.task_rows = []
         
-        # Add task rows
+        # Add initial task rows
         self.create_task_row("Rinse Component A", "P", 0)
         self.create_task_row("Clean Surface B", "S", 1)
         self.create_task_row("Final Wash Cycle", "P", 2)
         
-        # Add more rows to demonstrate scrolling
-        for i in range(3, 9):
+        # Add more rows to demonstrate scrolling and add button for dynamic rows
+        for i in range(3, 6):
             self.create_task_row(f"Task {i+1}", "P" if i % 2 == 0 else "S", i)
+        
 
-        # Update button - placed at bottom of form container, outside scrollable area
-        self.update_button_frame = ctk.CTkFrame(
+
+        # Update and Clear buttons - placed at bottom of form container, outside scrollable area
+        self.button_container_frame = ctk.CTkFrame(
             self.form_container, 
             fg_color="transparent",
-            height=60
+            height=80
         )
-        self.update_button_frame.grid(row=2, column=0, sticky="ew", pady=(5, 10))
+        self.button_container_frame.grid(row=2, column=0, sticky="ew", pady=(5, 10))
+        
+        # Configure grid for button container
+        self.button_container_frame.grid_columnconfigure(0, weight=1)
+        self.button_container_frame.grid_columnconfigure(1, weight=1)
         
         self.update_button = CustomButton(
-            self.update_button_frame,
+            self.button_container_frame,
             text="Update",
             font=controller.fonts.get("default", None),
             icon_path="assets/icons/refresh.png",
@@ -176,16 +183,32 @@ class Sequences(ctk.CTkFrame):
             outlined=False,
             command=self.update_sequence,
         )
-        self.update_button.pack(pady=10)
+        self.update_button.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="ew")
+        
+        self.clear_button = CustomButton(
+            self.button_container_frame,
+            text="Clear All",
+            font=controller.fonts.get("default", None),
+            icon_path="assets/icons/trash.png",
+            icon_side="left",
+            outlined=False  ,
+            command=self.clear_all_tasks,
+        )
+        self.clear_button.grid(row=0, column=1, padx=(5, 10), pady=10, sticky="ew")
 
-        # Graph frame for visualization
-        self.graph_frame = ctk.CTkFrame(self.content_frame, fg_color="#F8F8F8")
-        self.graph_frame.grid(row=0, column=1, sticky="nsew", padx=(20, 0), pady=(0, 20))
+        # Create sequence visualizer
+        self.sequence_visualizer = SequenceVisualizer(
+            self.content_frame,
+            controller,
+            width=600,
+            height=400
+        )
+        self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0), pady=(0, 20))
 
         # Total duration label
         self.duration_label = ctk.CTkLabel(
             self.content_frame, 
-            text="Total washing duration: 45 sec", 
+            text="Total washing duration: 0.0 sec", 
             font=controller.fonts.get("default", None),
             anchor="center"
         )
@@ -221,7 +244,7 @@ class Sequences(ctk.CTkFrame):
         
         unit_dropdown = ctk.CTkOptionMenu(
             entry_frame, 
-            values=["s", "min", "h"], 
+            values=["s", "ms"], 
             font=self.controller.fonts.get("default", None),
             width=65,
             command=lambda x: None
@@ -249,6 +272,29 @@ class Sequences(ctk.CTkFrame):
         
         return priority_selector
     
+    def add_new_task(self):
+        """Add a new task row dynamically"""
+        new_index = len(self.task_rows)
+        task_name = f"New Task {new_index + 1}"
+        
+        # Create new task row
+        self.create_task_row(task_name, "P", new_index)
+        
+    
+    def clear_all_tasks(self):
+        """Clear all task rows except the first few default ones"""
+        
+        # Clear values in remaining tasks
+        for row in self.task_rows:
+            row['duration_entry'].delete(0, 'end')
+            row['priority_selector'].select('P')
+            row['unit_dropdown'].set("s")
+    
+        
+        # Clear the visualization
+        self.sequence_visualizer.clear_visualization()
+        self.duration_label.configure(text="Total washing duration: 0.0 sec")
+    
     def on_priority_change(self, task, priority):
         """Handle priority change"""
         print(f"Task '{task}' priority changed to: {priority}")
@@ -257,7 +303,9 @@ class Sequences(ctk.CTkFrame):
     def update_sequence(self):
         """Update the sequence based on current inputs"""
         total_duration = 0
-        # Calculate total duration and update the washing sequence
+        tasks_data = []
+        
+        # Calculate total duration and collect task data
         for row in self.task_rows:
             try:
                 duration_text = row['duration_entry'].get()
@@ -267,26 +315,42 @@ class Sequences(ctk.CTkFrame):
                 duration = float(duration_text)
                 unit = row['unit_dropdown'].get()
                 priority = row['priority_selector'].get()
+                task_name = row['task_name']
                 
-                # Convert to seconds based on unit
-                if unit == "min":
-                    duration *= 60
-                elif unit == "h":
-                    duration *= 3600
+                # Convert to seconds for total calculation
+                if unit == "ms":
+                    duration_seconds = duration / 1000.0
+                else:  # "s"
+                    duration_seconds = duration
                     
-                total_duration += duration
+                total_duration += duration_seconds
                 
-                print(f"Task: {row['task_name']}, Duration: {duration}s, Priority: {priority}")
+                # Add to tasks data for visualization
+                tasks_data.append({
+                    'name': task_name,
+                    'duration': duration,
+                    'unit': unit,
+                    'priority': priority
+                })
+                
+                print(f"Task: {task_name}, Duration: {duration}{unit}, Priority: {priority}")
             except ValueError:
                 print(f"Invalid duration for task: {row['task_name']}")
         
         # Update the total duration label
         self.duration_label.configure(text=f"Total washing duration: {total_duration:.1f} sec")
+        
+        # Update the sequence visualizer
+        self.sequence_visualizer.update_visualization(tasks_data)
     
     def update_appearance(self):
         """Update any appearance-dependent elements"""
-        # If you have any appearance-dependent elements, update them here
-        pass
+        # Update the sequence visualizer appearance
+        if hasattr(self, 'sequence_visualizer'):
+            try:
+                self.sequence_visualizer.update_appearance()
+            except Exception as e:
+                print(f"Error updating sequence visualizer appearance: {e}")
 
     def save_configuration(self):
         """Save the configuration via the controller"""
