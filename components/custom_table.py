@@ -49,93 +49,78 @@ class CustomTable(ctk.CTkFrame):
         # Calculate column widths or use provided ones
         self.column_widths = column_widths if column_widths else self._calculate_column_widths()
         
+        # Calculate total table width
+        self.total_width = sum(self.column_widths) + 80  # Add space for action column
+        
         # Create the table structure
         self._create_table()
         
         # Update appearance - now called AFTER creating the table
         AppearanceManager.register(self)
         self.update_appearance()
-        
-        # Set the actual width of the frame to match internal content
-        self.configure(width=self._get_total_width())
-    
-    def _get_total_width(self) -> int:
-        """Calculate the total width of the table based on column widths"""
-        return sum(self.column_widths)
     
     def _calculate_column_widths(self) -> List[int]:
-        """Calculate optimal column widths based on headers and available width"""
-        # Set action column width (fixed, making it a bit wider for better button placement)
-        action_width = 70
-        available_width = self.width - action_width
-        
+        """Calculate optimal column widths based on headers and content"""
         if not self.headers:
-            return [available_width, action_width]
+            return []
         
-        # More accurate width calculation based on header text length
-        # Adjusting for font size and padding
-        header_widths = []
-        for header in self.headers:
-            # Estimate width based on character count (12px font with bold)
-            char_width = 8  # Adjusted for a more accurate pixel per character estimation
-            estimated_width = len(header) * char_width + 20  # Add padding
-            header_widths.append(estimated_width)
+        # Calculate widths based on both headers and content
+        column_widths = []
         
-        # Set a reasonable minimum width
-        min_width = 60  # Reduced from 80px
-        header_widths = [max(w, min_width) for w in header_widths]
-        
-        # Calculate total needed width
-        total_needed = sum(header_widths)
-        
-        # If total exceeds available, scale down proportionally
-        if total_needed > available_width:
-            scale_factor = available_width / total_needed
-            header_widths = [int(w * scale_factor) for w in header_widths]
-        # If there's extra space, distribute evenly instead of proportionally
-        elif total_needed < available_width:
-            extra_per_column = int((available_width - total_needed) / len(header_widths))
-            header_widths = [w + extra_per_column for w in header_widths]
+        for i, header in enumerate(self.headers):
+            # Start with header width
+            header_width = len(header) * 8 + 40  # Increased padding
+            max_width = header_width
             
-            # Add any remaining pixels to the first column
-            remaining = available_width - sum(header_widths)
-            if remaining > 0 and len(header_widths) > 0:
-                header_widths[0] += remaining
+            # Check content width if data exists
+            if self.data:
+                for row in self.data:
+                    content = str(row.get(header, ""))
+                    content_width = len(content) * 7 + 40  # Content typically needs less width per char
+                    max_width = max(max_width, content_width)
+            
+            # Set minimum and maximum constraints
+            min_width = 100
+            max_allowed_width = 250
+            
+            column_widths.append(min(max(max_width, min_width), max_allowed_width))
         
-        # Add action column width
-        return header_widths + [action_width]
+        return column_widths
     
     def _create_table(self):
         """Create the initial table structure"""
         colors = self._get_colors()
         
-        # Main table container - controls the total width
+        # Main table container
         self.table_container = ctk.CTkFrame(
             self, 
             fg_color="transparent",
-            width=self._get_total_width(),
-            height=40  # Will expand with content
+            corner_radius=self.corner_radius
         )
         self.table_container.pack(fill="both", expand=True)
         
-        # Create header frame
+        # Configure table container grid
+        self.table_container.grid_rowconfigure(0, weight=0)  # Header
+        self.table_container.grid_rowconfigure(1, weight=1)  # Content
+        self.table_container.grid_columnconfigure(0, weight=1)
+        
+        # Create header frame with fixed width
         self.header_frame = ctk.CTkFrame(
             self.table_container, 
             fg_color=colors["header_bg"],
             corner_radius=self.corner_radius,
             height=self.row_height,
-            width=self._get_total_width()
+            width=self.total_width
         )
-        self.header_frame.pack(fill="x", padx=0, pady=(0, 1))
+        self.header_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=(0, 1))
         
-        # Make header frame have fixed width columns
-        self.header_frame.pack_propagate(False)
-        
-        # Set up columns in header frame - all columns have a fixed width
+        # Configure header frame grid
         for i, width in enumerate(self.column_widths):
-            self.header_frame.columnconfigure(i, weight=0, minsize=width)
+            self.header_frame.grid_columnconfigure(i, weight=0, minsize=width)
+        # Action column - fixed width at the end
+        self.header_frame.grid_columnconfigure(len(self.column_widths), weight=0, minsize=80)
         
-        # Add header cells with center alignment to match rows
+        # Add header cells
         for i, header in enumerate(self.headers):
             cell = ctk.CTkLabel(
                 self.header_frame,
@@ -143,14 +128,13 @@ class CustomTable(ctk.CTkFrame):
                 fg_color="transparent",
                 text_color=colors["header_fg"],
                 font=ctk.CTkFont(family="Encode Sans Expanded Bold", size=12, weight="bold"),
-                anchor="center",  # Changed to center for consistency with rows
-                padx=10,
+                anchor="center",
                 width=self.column_widths[i]
             )
-            cell.grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+            cell.grid(row=0, column=i, sticky="ew", padx=2, pady=1)
             self.header_cells.append(cell)
         
-        # Add "Actions" header for the last column - right aligned
+        # Add "Actions" header
         actions_header = ctk.CTkLabel(
             self.header_frame,
             text="Actions",
@@ -158,39 +142,28 @@ class CustomTable(ctk.CTkFrame):
             text_color=colors["header_fg"],
             font=ctk.CTkFont(family="Encode Sans Expanded Bold", size=12, weight="bold"),
             anchor="center",
-            width=self.column_widths[-1]
+            width=80
         )
-        actions_header.grid(row=0, column=len(self.headers), sticky="nsew", padx=1, pady=1)
+        actions_header.grid(row=0, column=len(self.headers), sticky="ew", padx=2, pady=1)
         self.header_cells.append(actions_header)
         
-        # Create rows container with scrolling capability
+        # Create scrollable content frame
         self.rows_container = ctk.CTkScrollableFrame(
             self.table_container, 
             fg_color="transparent",
-            width=self._get_total_width(),
-            corner_radius=0  # No corner radius for the scrollable frame
+            corner_radius=0
         )
-        self.rows_container.pack(fill="both", expand=True, padx=0, pady=0)
+        self.rows_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         
-        # Configure the scrollable frame to not have extra right padding
-        # This ensures the action buttons appear at the very right
-        self.rows_container._scrollbar.grid_configure(padx=(0, 0))
+        # Configure scrollbar
+        self.rows_container._scrollbar.grid_configure(padx=(2, 0))
         
-        # Add initial data rows if any
+        # Add initial data rows
         for row_data in self.data:
             self.add_row(row_data)
     
     def add_row(self, row_data: Dict[str, Any], index: int = None) -> int:
-        """
-        Add a new row to the table
-        
-        Parameters:
-            row_data: Dictionary with data for the row (keys should match headers)
-            index: Position to insert the row (None for append)
-            
-        Returns:
-            The index of the added row
-        """
+        """Add a new row to the table"""
         colors = self._get_colors()
         
         # Determine row index
@@ -200,33 +173,28 @@ class CustomTable(ctk.CTkFrame):
         # Get background color based on even/odd row
         bg_color = colors["row_bg_even"] if index % 2 == 0 else colors["row_bg_odd"]
         
-        # Create row frame with rounded corners if it's the last row
-        is_last_row = (index == len(self.rows))
-        corner_radius = self.corner_radius if is_last_row else 0
-        
+        # Create row frame
         row_frame = ctk.CTkFrame(
             self.rows_container,
             fg_color=bg_color,
-            corner_radius=corner_radius,
-            height=self.row_height,
-            width=self._get_total_width()
+            corner_radius=0,
+            height=self.row_height
         )
-        
-        # Fixed width row
         row_frame.pack(fill="x", padx=0, pady=0)
-        row_frame.pack_propagate(False)
         
-        # Configure columns in row to match header - all with fixed width
+        # Configure row frame grid to match header
         for i, width in enumerate(self.column_widths):
-            row_frame.columnconfigure(i, weight=0, minsize=width)
+            row_frame.grid_columnconfigure(i, weight=0, minsize=width)
+        # Action column
+        row_frame.grid_columnconfigure(len(self.column_widths), weight=0, minsize=80)
         
         # Create cells for each column
         row_cells = []
         for i, header in enumerate(self.headers):
-            # Get cell value or empty string if not found
+            # Get cell value
             cell_value = str(row_data.get(header, ""))
             
-            # Create cell label with center alignment
+            # Create cell label
             cell = ctk.CTkLabel(
                 row_frame,
                 text=cell_value,
@@ -234,27 +202,33 @@ class CustomTable(ctk.CTkFrame):
                 text_color=colors["row_fg"],
                 font=ctk.CTkFont(family="Encode Sans Expanded", size=12),
                 anchor="center",
-                padx=10,
                 width=self.column_widths[i]
             )
-            cell.grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+            cell.grid(row=0, column=i, sticky="ew", padx=2, pady=1)
             row_cells.append(cell)
         
-        # Create actions container with right alignment
-        actions_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
-        actions_frame.grid(row=0, column=len(self.headers), sticky="e", padx=(0, 5), pady=1)
+        # Create actions frame in the last column
+        actions_frame = ctk.CTkFrame(
+            row_frame, 
+            fg_color="transparent",
+            width=80
+        )
+        actions_frame.grid(row=0, column=len(self.headers), sticky="ew", padx=2, pady=1)
         
-        # Add edit and delete buttons
+        # Center the buttons in the actions frame
+        actions_frame.grid_columnconfigure(0, weight=1)
+        actions_frame.grid_columnconfigure(1, weight=0)
+        actions_frame.grid_columnconfigure(2, weight=0)
+        actions_frame.grid_columnconfigure(3, weight=1)
+        
+        # Load icons
         actual_mode = ctk.get_appearance_mode().lower()
         edit_icon = self.icons.get("edit", {}).get(actual_mode)
         delete_icon = self.icons.get("delete", {}).get(actual_mode)
         
-        # Create a button container to ensure buttons are aligned right
-        button_container = ctk.CTkFrame(actions_frame, fg_color="transparent")
-        button_container.pack(side="right", padx=0)
-        
+        # Create buttons centered in the actions frame
         edit_btn = ctk.CTkButton(
-            button_container,
+            actions_frame,
             text="",
             image=edit_icon,
             width=25,
@@ -265,10 +239,10 @@ class CustomTable(ctk.CTkFrame):
             corner_radius=6,
             command=lambda idx=index: self._handle_edit(idx)
         )
-        edit_btn.pack(side="left", padx=(0, 2))
+        edit_btn.grid(row=0, column=1, padx=2)
         
         delete_btn = ctk.CTkButton(
-            button_container,
+            actions_frame,
             text="",
             image=delete_icon,
             width=25,
@@ -279,23 +253,22 @@ class CustomTable(ctk.CTkFrame):
             corner_radius=6,
             command=lambda idx=index: self._handle_delete(idx)
         )
-        delete_btn.pack(side="left", padx=(0, 0))
+        delete_btn.grid(row=0, column=2, padx=2)
         
-        # Create row data entry
+        # Store row data
         row_entry = {
             "data": row_data,
             "cells": row_cells,
             "frame": row_frame,
-            "actions": (edit_btn, delete_btn)
+            "actions": (edit_btn, delete_btn),
+            "actions_frame": actions_frame
         }
         
-        # Insert row data at specified index
+        # Insert row data
         if index < len(self.rows):
             self.rows.insert(index, row_entry)
             self.row_frames.insert(index, row_frame)
             self.action_buttons.insert(index, (edit_btn, delete_btn))
-            
-            # Update appearance of existing rows (for even/odd coloring)
             self._update_row_appearance()
         else:
             self.rows.append(row_entry)
@@ -305,15 +278,7 @@ class CustomTable(ctk.CTkFrame):
         return index
     
     def remove_row(self, index: int) -> bool:
-        """
-        Remove a row from the table
-        
-        Parameters:
-            index: Index of the row to remove
-            
-        Returns:
-            True if row was removed, False otherwise
-        """
+        """Remove a row from the table"""
         if 0 <= index < len(self.rows):
             # Destroy the row frame
             if index < len(self.row_frames):
@@ -329,20 +294,21 @@ class CustomTable(ctk.CTkFrame):
             
             # Update row appearance for proper even/odd coloring
             self._update_row_appearance()
+            
+            # Update button callbacks with new indices
+            self._update_button_callbacks()
+            
             return True
         return False
     
+    def _update_button_callbacks(self):
+        """Update button callbacks after row removal to maintain correct indices"""
+        for i, (edit_btn, delete_btn) in enumerate(self.action_buttons):
+            edit_btn.configure(command=lambda idx=i: self._handle_edit(idx))
+            delete_btn.configure(command=lambda idx=i: self._handle_delete(idx))
+    
     def update_row(self, index: int, row_data: Dict[str, Any]) -> bool:
-        """
-        Update an existing row with new data
-        
-        Parameters:
-            index: Index of the row to update
-            row_data: New data for the row
-            
-        Returns:
-            True if row was updated, False otherwise
-        """
+        """Update an existing row with new data"""
         if 0 <= index < len(self.rows):
             row = self.rows[index]
             
@@ -421,37 +387,20 @@ class CustomTable(ctk.CTkFrame):
             }
     
     def _update_row_appearance(self):
-        """Update appearance of all rows (for even/odd coloring and corner radius)"""
+        """Update appearance of all rows (for even/odd coloring)"""
         colors = self._get_colors()
         
         for i, frame in enumerate(self.row_frames):
             # Update background color based on even/odd row
             bg_color = colors["row_bg_even"] if i % 2 == 0 else colors["row_bg_odd"]
             frame.configure(fg_color=bg_color)
-            
-            # Update corner radius for last row only
-            is_last_row = (i == len(self.row_frames) - 1)
-            corner_radius = self.corner_radius if is_last_row else 0
-            
-            # Update corner radius safely
-            try:
-                frame.configure(corner_radius=corner_radius)
-            except Exception:
-                # Fallback for older CTk versions
-                frame._corner_radius = corner_radius
-                if hasattr(frame, '_draw_engine'):
-                    frame._draw_engine.configure(corner_radius=corner_radius)
     
     def update_appearance(self, appearance_mode: str = None):
         """Update the appearance of the table based on the appearance mode"""
-        # If appearance_mode is provided, update the stored mode
         if appearance_mode is not None:
             self.appearance_mode = appearance_mode
             
-        # Get the actual current mode from the system
         actual_mode = ctk.get_appearance_mode().lower()
-        
-        # Get colors based on the actual mode
         colors = self._get_colors()
         
         # Update header
@@ -486,27 +435,26 @@ class CustomTable(ctk.CTkFrame):
     def _load_icons(self):
         """Load edit and delete icons"""
         try:
-            # Import the open_icon function
             from utils.open_image import open_icon
             
             # Edit icon
             edit_path = "assets/icons/edit.png"
-            if not os.path.exists(edit_path):
-                print(f"Warning: Edit icon not found at {edit_path}")
-            else:
+            if os.path.exists(edit_path):
                 self.icons["edit"] = {
                     "light": open_icon(edit_path, size=(20, 20)),
                     "dark": open_icon(edit_path, size=(20, 20))
                 }
+            else:
+                print(f"Warning: Edit icon not found at {edit_path}")
             
             # Delete icon
             delete_path = "assets/icons/trash.png"
-            if not os.path.exists(delete_path):
-                print(f"Warning: Delete icon not found at {delete_path}")
-            else:
+            if os.path.exists(delete_path):
                 self.icons["delete"] = {
                     "light": open_icon(delete_path, size=(20, 20), tint_color="#FF0000"),
                     "dark": open_icon(delete_path, size=(20, 20), tint_color="#FF0000")
                 }
+            else:
+                print(f"Warning: Delete icon not found at {delete_path}")
         except Exception as e:
             print(f"Error loading table icons: {e}")

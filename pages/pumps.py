@@ -140,7 +140,7 @@ class Pumps(ctk.CTkFrame):
                 edit_command=self.edit_row,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                column_widths=column_widths,  # Add custom column widths
+                # column_widths=column_widths,  # Add custom column widths
             )
             self.table.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
         except Exception as e:

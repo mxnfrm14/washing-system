@@ -128,13 +128,13 @@ class WashingComponent(ctk.CTkFrame):
         # Define custom column widths based on content needs
         # The values are proportional to the total table width
         column_widths = [
-            140,  # Component
-            120,  # Nozzle Ref
+            130,  # Component
+            100,  # Nozzle Ref
             100,  # D_C_N (mm)
             100,  # DZ_P_N (mm)
             140,  # Integration Angle
-            220,  # Targeted Washing Performance
-            40   # Actions column (automatically added)
+            200,  # Targeted Washing Performance
+            # 40   # Actions column (automatically added)
         ]
 
         # Create the custom table with specified column widths
@@ -143,13 +143,13 @@ class WashingComponent(ctk.CTkFrame):
                 self.content_frame,
                 headers=headers,
                 data=data,
-                width=840,
+                width=700,
                 edit_command=self.edit_row,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                # column_widths=column_widths,  # Add custom column widths
+                column_widths=column_widths,  # Add custom column widths
             )
-            self.table.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
+            self.table.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         except Exception as e:
             print(f"Error creating table: {e}")
 
