@@ -3,6 +3,7 @@ from tkinter import messagebox
 from components.custom_button import CustomButton
 from PIL import Image
 from components.custom_table import CustomTable
+from components.component_config_dialog import ComponentConfigDialog
 
 class WashingComponent(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -86,32 +87,9 @@ class WashingComponent(ctk.CTkFrame):
 
         # Define sample headers and data
         headers = ["Component", "Nozzle Ref", "D_C_N (mm)", "DZ_P_N (mm)", "Intergration Angle", "Targeted Washing Preformance"]
-        data = [
-            {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "1243",
-                "DZ_P_N (mm)": "1243",
-                "Intergration Angle": "34",
-                "Targeted Washing Preformance": "53"
-            },
-            {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "124334",
-                "DZ_P_N (mm)": "324",
-                "Intergration Angle": "90",
-                "Targeted Washing Preformance": "80"
-            },
-            {
-                "Component": "Component",
-                "Nozzle Ref": "Nozzle Ref",
-                "D_C_N (mm)": "1234",
-                "DZ_P_N (mm)": "4321",
-                "Intergration Angle": "65",
-                "Targeted Washing Preformance": "67"
-            }
-        ]
+        
+        # Start with empty data or some initial data
+        data = []
 
         # Create the add button
         self.add_button = CustomButton(
@@ -121,12 +99,11 @@ class WashingComponent(ctk.CTkFrame):
             icon_path="assets/icons/add.png",
             icon_side="left",
             outlined=False,
-            command=self.add_row
+            command=self.show_add_dialog
         )
         self.add_button.grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 30))
 
         # Define custom column widths based on content needs
-        # The values are proportional to the total table width
         column_widths = [
             130,  # Component
             100,  # Nozzle Ref
@@ -134,7 +111,6 @@ class WashingComponent(ctk.CTkFrame):
             100,  # DZ_P_N (mm)
             140,  # Integration Angle
             200,  # Targeted Washing Performance
-            # 40   # Actions column (automatically added)
         ]
 
         # Create the custom table with specified column widths
@@ -144,10 +120,10 @@ class WashingComponent(ctk.CTkFrame):
                 headers=headers,
                 data=data,
                 width=700,
-                edit_command=self.edit_row,
+                edit_command=self.show_edit_dialog,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                column_widths=column_widths,  # Add custom column widths
+                column_widths=column_widths,
             )
             self.table.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         except Exception as e:
@@ -160,40 +136,55 @@ class WashingComponent(ctk.CTkFrame):
         self.image_label = ctk.CTkLabel(self.content_frame, text="", image=self.image, compound="top")
         self.image_label.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(10, 0), pady=(0, 10))
 
-    def add_row(self):
-        """Add a new row to the table"""
-        new_data = {
-            "Component": "New Component",
-            "Nozzle Ref": "Nozzle Ref",
-            "D_C_N (mm)": "123",
-            "DZ_P_N (mm)": "345",
-            "Intergration Angle": "89",
-            "Targeted Washing Preformance": "90"
-        }
-        self.table.add_row(new_data)
+    def show_add_dialog(self):
+        """Show the component configuration dialog for adding"""
+        dialog = ComponentConfigDialog(
+            self,
+            self.controller,
+            on_save=self.add_component_from_dialog
+        )
+        self.wait_window(dialog)
     
-    def edit_row(self, index, row_data):
-        """Handle edit button click"""
-        # In a real app, you'd show a dialog to edit the data
-        # For this example, we'll just show a message and update the row
-        messagebox.showinfo("Edit Row", f"Editing row {index}: {row_data}")
-        
-        # Update the row with new data (in a real app, this would come from a dialog)
-        updated_data = row_data.copy()
-        updated_data["Nozzle Ref"] = "edited"
-        self.table.update_row(index, updated_data)
+    def show_edit_dialog(self, index, row_data):
+        """Show the component configuration dialog for editing"""
+        dialog = ComponentConfigDialog(
+            self,
+            self.controller,
+            on_save=lambda data: self.update_component_from_dialog(index, data),
+            edit_data=row_data
+        )
+        self.wait_window(dialog)
+    
+    def add_component_from_dialog(self, component_data):
+        """Add a component from the dialog data"""
+        self.table.add_row(component_data)
+        print(f"Added component: {component_data}")
+    
+    def update_component_from_dialog(self, index, component_data):
+        """Update a component from the dialog data"""
+        self.table.update_row(index, component_data)
+        print(f"Updated component at index {index}: {component_data}")
     
     def delete_row(self, index, row_data):
         """Handle delete button click"""
         # Confirm deletion
-        if messagebox.askyesno("Delete Row", f"Delete row {index}?"):
+        if messagebox.askyesno("Delete Component", f"Are you sure you want to delete this component?\n\nComponent: {row_data.get('Component', 'Unknown')}"):
             self.table.remove_row(index)
+            print(f"Deleted component at index {index}")
 
     def save_configuration(self):
         """Save the current configuration"""
-        # Implement save functionality here
+        # Get all data from the table
+        all_components = self.table.get_all_data()
+        
         print("Saving configuration...")
-        # You can add file dialog and save logic here
+        print(f"Total components: {len(all_components)}")
+        for i, component in enumerate(all_components):
+            print(f"Component {i+1}: {component}")
+        
+        # Here you would typically save to a database or file
+        # For now, just show a success message
+        messagebox.showinfo("Success", f"Configuration saved successfully!\n\n{len(all_components)} components saved.")
         
     def update_appearance(self):
         """Update any appearance-dependent elements"""

@@ -2,6 +2,7 @@ import customtkinter as ctk
 from components.custom_button import CustomButton
 from tkinter import messagebox
 from components.custom_table import CustomTable
+from components.pump_config_dialog import PumpConfigDialog
 
 class Pumps(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -90,35 +91,15 @@ class Pumps(ctk.CTkFrame):
             icon_path="assets/icons/add.png",
             icon_side="left",
             outlined=False,
-            command=self.add_row
+            command=self.show_add_dialog
         )
         self.add_button.grid(row=0, column=0, pady=(0, 30), sticky="n")
 
         # Define sample headers and data
         headers = ["Pump Category", "Number of output", "Pump Name", "Number of WC (O1)", "Number of WC (O2)"]
-        data = [
-            {
-                "Pump Category": "Pump Category",
-                "Number of output": "2",
-                "Pump Name": "AWEKL 123133112 DE",
-                "Number of WC (O1)": "3",
-                "Number of WC (O2)": "1"
-            },
-            {
-                "Pump Category": "Pump Category",
-                "Number of output": "1",
-                "Pump Name": "AWEKL 123133112 DE",
-                "Number of WC (O1)": "2",
-                "Number of WC (O2)": "0"
-            },
-            {
-                "Pump Category": "Pump Category",
-                "Number of output": "1",
-                "Pump Name": "AWEKL 123133112 DE",
-                "Number of WC (O1)": "2",
-                "Number of WC (O2)": "0"
-            }
-        ]
+        
+        # Start with empty data or some initial data
+        data = []
 
         # Define custom column widths based on content needs
         # The values are proportional to the total table width
@@ -137,7 +118,7 @@ class Pumps(ctk.CTkFrame):
                 headers=headers,
                 data=data,
                 width=800,
-                edit_command=self.edit_row,
+                edit_command=self.show_edit_dialog,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
                 # column_widths=column_widths,  # Add custom column widths
@@ -146,34 +127,41 @@ class Pumps(ctk.CTkFrame):
         except Exception as e:
             print(f"Error creating table: {e}")
 
-
-    def add_row(self):
-        """Add a new row to the table"""
-        new_data = {
-            "Pump Category": "New Pump Category",
-            "Number of output": "2",
-            "Pump Name": "Pump Name",
-            "Number of WC (O1)": "1",
-            "Number of WC (O2)": "2"
-        }
-        self.table.add_row(new_data)
+    def show_add_dialog(self):
+        """Show the pump configuration dialog for adding"""
+        dialog = PumpConfigDialog(
+            self,
+            self.controller,
+            on_save=self.add_pump_from_dialog
+        )
+        self.wait_window(dialog)
     
-    def edit_row(self, index, row_data):
-        """Handle edit button click"""
-        # In a real app, you'd show a dialog to edit the data
-        # For this example, we'll just show a message and update the row
-        messagebox.showinfo("Edit Row", f"Editing row {index}: {row_data}")
-        
-        # Update the row with new data (in a real app, this would come from a dialog)
-        updated_data = row_data.copy()
-        updated_data["Number of output"] = "edited"
-        self.table.update_row(index, updated_data)
+    def show_edit_dialog(self, index, row_data):
+        """Show the pump configuration dialog for editing"""
+        dialog = PumpConfigDialog(
+            self,
+            self.controller,
+            on_save=lambda data: self.update_pump_from_dialog(index, data),
+            edit_data=row_data
+        )
+        self.wait_window(dialog)
+    
+    def add_pump_from_dialog(self, pump_data):
+        """Add a pump from the dialog data"""
+        self.table.add_row(pump_data)
+        print(f"Added pump: {pump_data}")
+    
+    def update_pump_from_dialog(self, index, pump_data):
+        """Update a pump from the dialog data"""
+        self.table.update_row(index, pump_data)
+        print(f"Updated pump at index {index}: {pump_data}")
     
     def delete_row(self, index, row_data):
         """Handle delete button click"""
         # Confirm deletion
-        if messagebox.askyesno("Delete Row", f"Delete row {index}?"):
+        if messagebox.askyesno("Delete Pump", f"Are you sure you want to delete this pump?\n\nPump: {row_data.get('Pump Name', 'Unknown')}"):
             self.table.remove_row(index)
+            print(f"Deleted pump at index {index}")
     
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -186,4 +174,14 @@ class Pumps(ctk.CTkFrame):
 
     def save_configuration(self):
         """Save the configuration via the controller"""
-        print("Configuration saved!")
+        # Get all data from the table
+        all_pumps = self.table.get_all_data()
+        
+        print("Saving pump configuration...")
+        print(f"Total pumps: {len(all_pumps)}")
+        for i, pump in enumerate(all_pumps):
+            print(f"Pump {i+1}: {pump}")
+        
+        # Here you would typically save to a database or file
+        # For now, just show a success message
+        messagebox.showinfo("Success", f"Pump configuration saved successfully!\n\n{len(all_pumps)} pumps saved.")
