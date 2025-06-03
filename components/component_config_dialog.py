@@ -140,7 +140,8 @@ class ComponentConfigDialog(ctk.CTkToplevel):
             self.buttons_frame,
             text="Cancel",
             font=self.controller.fonts.get("default", None),
-            icon_path=None,
+            icon_path="assets/icons/back.png",
+            icon_side="left",
             outlined=True,
             command=self.cancel
         )

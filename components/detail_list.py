@@ -141,7 +141,7 @@ class DetailList(ctk.CTkFrame):
         washing_header = ctk.CTkLabel(
             self.main_container,
             text="Components",
-            font=self.controller.fonts.get("title", None),
+            font=self.controller.fonts.get("subtitle", None),
             text_color=colors['text_color']
         )
         washing_header.pack(anchor="w", padx=10, pady=(20, 5))

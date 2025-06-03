@@ -27,7 +27,7 @@ class App(ctk.CTk):
             "default": ctk.CTkFont(family="Encode Sans Expanded", size=14, weight="normal"),
             "bold": ctk.CTkFont(family="Encode Sans Expanded Bold", size=14, weight="bold"),
             "title": ctk.CTkFont(family="Encode Sans Expanded Bold", size=24, weight="bold"),
-            "subtitle": ctk.CTkFont(family="Encode Sans Expanded", size=16, weight="normal")
+            "subtitle": ctk.CTkFont(family="Encode Sans Expanded", size=18, weight="normal")
         }
 
         # Configure grid layout

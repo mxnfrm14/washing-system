@@ -6,6 +6,7 @@ import os
 from PIL import Image, ImageTk
 from utils.appearance_manager import AppearanceManager
 from utils.open_image import open_image
+from components.pipe_config_dialog import PipeConfigDialog
 
 class CircuitDesigner(ctk.CTkFrame):
     """Circuit designer canvas with icon-based components"""
@@ -71,7 +72,7 @@ class CircuitDesigner(ctk.CTkFrame):
         self.first_connection_item_id = None
         self.mode_selector = None
         self.detail_list = None  # Reference to detail list for component tracking
-        self.circuits_controller = None  # Reference to circuits page controller
+        self.circuits_controller = None  # Reference to circuits page controller for cross-tab syncing
         
         # Drag state
         self._drag_data = {"x": 0, "y": 0, "item": None, "offset_x": 0, "offset_y": 0}
@@ -260,9 +261,19 @@ class CircuitDesigner(ctk.CTkFrame):
         elif mode == "connect":
             if target_item:
                 self.handle_connection_click(target_item)
+            else:
+                # Check if clicking on a connection line
+                connection = self.find_connection_at(x, y)
+                if connection:
+                    self.edit_connection(connection)
         elif mode == "delete":
             if target_item:
                 self.delete_item(target_item)
+            else:
+                # Check if clicking on a connection line
+                connection = self.find_connection_at(x, y)
+                if connection:
+                    self.delete_connection(connection)
     
     def on_canvas_drag(self, event):
         """Handle canvas drag"""
@@ -277,6 +288,7 @@ class CircuitDesigner(ctk.CTkFrame):
     def on_canvas_hover(self, event):
         """Handle hover effects"""
         item = self.find_item_at(event.x, event.y)
+        connection = self.find_connection_at(event.x, event.y)
         mode = self.current_mode["mode"]
         
         # Update hover cursor based on mode and item
@@ -289,7 +301,22 @@ class CircuitDesigner(ctk.CTkFrame):
                 self.canvas.config(cursor="fleur")
             else:
                 self.canvas.config(cursor="arrow")
+        elif connection:
+            if mode == "connect":
+                # Show hand cursor for editable connections
+                self.canvas.config(cursor="hand2")
+                # Highlight connection on hover
+                self.canvas.itemconfig(connection['line_id'], width=3)
+            elif mode == "delete":
+                # Show delete cursor for deletable connections
+                self.canvas.config(cursor="X_cursor")
+                # Highlight connection in red
+                self.canvas.itemconfig(connection['line_id'], fill="#FF0000", width=3)
         else:
+            # Reset connection appearance
+            for conn in self.connectors:
+                self.canvas.itemconfig(conn['line_id'], width=2, fill="#243783")
+            
             # Reset to mode cursor when not over an item
             if mode == "place":
                 self.canvas.config(cursor="crosshair")
@@ -309,6 +336,16 @@ class CircuitDesigner(ctk.CTkFrame):
                 continue
             if item in self.placed_items:
                 return item
+        return None
+    
+    def find_connection_at(self, x, y):
+        """Find connection line at coordinates"""
+        items = self.canvas.find_overlapping(x-5, y-5, x+5, y+5)
+        for item in items:
+            # Check if it's a connection line
+            for conn in self.connectors:
+                if conn['line_id'] == item:
+                    return conn
         return None
     
     def place_component(self, x, y, component):
@@ -505,14 +542,36 @@ class CircuitDesigner(ctk.CTkFrame):
             self.first_connection_item_id = item_id
             self.highlight_item(item_id, True)
         elif self.first_connection_item_id != item_id:
-            # Complete connection
-            self.create_connection(self.first_connection_item_id, item_id)
-            self.reset_connection_state()
+            # Show pipe configuration dialog
+            from_item = self.placed_items[self.first_connection_item_id]
+            to_item = self.placed_items[item_id]
+            
+            # Store temporary variables to capture current state
+            current_from_id = self.first_connection_item_id
+            current_to_id = item_id
+            
+            dialog = PipeConfigDialog(
+                self,
+                self.controller,
+                from_component=from_item['name'],
+                to_component=to_item['name'],
+                on_save=lambda params: self.complete_connection(
+                    current_from_id, 
+                    current_to_id, 
+                    params
+                )
+            )
+            # Don't reset connection state here
         else:
             # Cancel connection
             self.reset_connection_state()
     
-    def create_connection(self, from_id, to_id):
+    def complete_connection(self, from_id, to_id, params):
+        """Complete the connection and reset state"""
+        self.create_connection(from_id, to_id, params)
+        self.reset_connection_state()
+    
+    def create_connection(self, from_id, to_id, parameters=None):
         """Create a connection between two components"""
         if from_id not in self.placed_items or to_id not in self.placed_items:
             return
@@ -550,12 +609,16 @@ class CircuitDesigner(ctk.CTkFrame):
         # Keep reset button on top
         self.canvas.tag_raise("reset_button")
         
-        # Store connection
-        self.connectors.append({
+        # Store connection with parameters
+        connection_data = {
             'line_id': line_id,
             'from_id': from_id,
-            'to_id': to_id
-        })
+            'to_id': to_id,
+            'from_name': from_item['name'],
+            'to_name': to_item['name'],
+            'parameters': parameters or {}
+        }
+        self.connectors.append(connection_data)
         
         # Update connection counts
         from_item['current_connections'] += 1
@@ -564,6 +627,22 @@ class CircuitDesigner(ctk.CTkFrame):
         # Update labels
         self.update_component_label(from_id)
         self.update_component_label(to_id)
+    
+    def edit_connection(self, connection):
+        """Edit an existing connection"""
+        dialog = PipeConfigDialog(
+            self,
+            self.controller,
+            from_component=connection['from_name'],
+            to_component=connection['to_name'],
+            on_save=lambda params: self.update_connection_parameters(connection, params),
+            edit_data=connection
+        )
+    
+    def update_connection_parameters(self, connection, new_params):
+        """Update connection parameters"""
+        connection['parameters'] = new_params
+        print(f"Updated connection parameters: {new_params}")
     
     def update_component_label(self, item_id):
         """Update component label with connection info"""
@@ -575,6 +654,27 @@ class CircuitDesigner(ctk.CTkFrame):
         
         label_text = f"{item['name']}\n{item['current_connections']}/{item['max_connections']}"
         self.canvas.itemconfig(label_id, text=label_text)
+    
+    def delete_connection(self, connection):
+        """Delete a specific connection"""
+        # Delete the line
+        self.canvas.delete(connection['line_id'])
+        
+        # Update connection counts
+        from_id = connection['from_id']
+        to_id = connection['to_id']
+        
+        if from_id in self.placed_items:
+            self.placed_items[from_id]['current_connections'] -= 1
+            self.update_component_label(from_id)
+        
+        if to_id in self.placed_items:
+            self.placed_items[to_id]['current_connections'] -= 1
+            self.update_component_label(to_id)
+        
+        # Remove from list
+        self.connectors.remove(connection)
+        print(f"Deleted connection between {connection.get('from_name', 'Unknown')} and {connection.get('to_name', 'Unknown')}")
     
     def delete_item(self, item_id):
         """Delete a component and its connections"""
@@ -734,7 +834,10 @@ class CircuitDesigner(ctk.CTkFrame):
             'connections': [
                 {
                     'from': conn['from_id'],
-                    'to': conn['to_id']
+                    'to': conn['to_id'],
+                    'from_name': conn.get('from_name', ''),
+                    'to_name': conn.get('to_name', ''),
+                    'parameters': conn.get('parameters', {})
                 }
                 for conn in self.connectors
             ]
