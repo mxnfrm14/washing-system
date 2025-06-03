@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from PIL import Image
-from components.custom_button import create_custom_button
+from components.custom_button import CustomButton
 from components.tabview import ThemedTabview
 
 ctk.set_appearance_mode("Dark")  
@@ -50,7 +50,7 @@ class App(ctk.CTk):
         self.custom_components.append(self.bouton)  # Add to tracking list
         
         # Create custom buttons and add them to our tracking list
-        self.btn1 = create_custom_button(
+        self.btn1 = CustomButton(
             master=self.frame,
             text="Télécharger",
             font=my_font,
@@ -62,7 +62,7 @@ class App(ctk.CTk):
         self.btn1.pack(pady=10)
         self.custom_components.append(self.btn1)  # Add to tracking list
 
-        self.btn2 = create_custom_button(
+        self.btn2 = CustomButton(
             master=self.frame,
             text="Annuler",
             font=my_font,
