@@ -20,7 +20,7 @@ class App(ctk.CTk):
         self.title("Washing System")
         self.iconbitmap("assets/icons/logo.ico")
         self.geometry("1300x800")
-        self.resizable(False, False)
+        # self.resizable(False, False)
         
         # Define fonts
         self.fonts = {
@@ -82,7 +82,7 @@ class App(ctk.CTk):
         self.settings_inner_frame.grid_rowconfigure(0, weight=0)
         self.settings_inner_frame.grid_columnconfigure((0,1), weight=1)
 
-        # Widgets for appearance mode and scaling 
+        # Widgets for appearance mode 
         self.appearance_mode_optionemenu = ctk.CTkOptionMenu(
             self, 
             values=["Light", "Dark"],
@@ -91,19 +91,19 @@ class App(ctk.CTk):
             dropdown_font=self.fonts["default"]
         )
         
-        self.scaling_optionemenu = ctk.CTkOptionMenu(
-            self, 
-            values=["80%", "90%", "100%", "110%", "120%"],
-            command=self.change_scaling_event, 
-            font=self.fonts["default"], 
-            dropdown_font=self.fonts["default"]
-        )
-        self.scaling_optionemenu.set("100%")  # Set default scaling
+        # self.scaling_optionemenu = ctk.CTkOptionMenu(
+        #     self, 
+        #     values=["80%", "90%", "100%", "110%", "120%"],
+        #     command=self.change_scaling_event, 
+        #     font=self.fonts["default"], 
+        #     dropdown_font=self.fonts["default"]
+        # )
+        # self.scaling_optionemenu.set("100%")  # Set default scaling
         self.appearance_mode_optionemenu.set("Dark")  # Set default appearance mode
 
         # Place widgets in the settings_inner_frame
         self.appearance_mode_optionemenu.grid(row=0, column=0, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
-        self.scaling_optionemenu.grid(row=0, column=1, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
+        # self.scaling_optionemenu.grid(row=0, column=1, sticky="w", padx=5, pady=5, in_=self.settings_inner_frame)
         
         # Create reset button
         self.reset_button = CustomButton(
@@ -125,7 +125,7 @@ class App(ctk.CTk):
         AppearanceManager.set_appearance_mode(new_appearance_mode)
     
     
-    def change_scaling_event(self, new_scaling: str):
-        """Change the UI scaling globally"""
-        new_scaling_float = int(new_scaling.replace("%", "")) / 100
-        ctk.set_widget_scaling(new_scaling_float)
+    # def change_scaling_event(self, new_scaling: str):
+    #     """Change the UI scaling globally"""
+    #     new_scaling_float = int(new_scaling.replace("%", "")) / 100
+    #     ctk.set_widget_scaling(new_scaling_float)

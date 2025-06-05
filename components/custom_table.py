@@ -151,7 +151,13 @@ class CustomTable(ctk.CTkFrame):
         self.rows_container = ctk.CTkScrollableFrame(
             self.table_container, 
             fg_color="transparent",
-            corner_radius=0
+            corner_radius=6,
+            width=self.total_width,
+            border_color=colors["border"],
+            border_width=1,
+            scrollbar_button_color=colors["header_bg"],
+            scrollbar_button_hover_color='#E3E3E3' if self.appearance_mode == "Dark" else '#243783',
+
         )
         self.rows_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         

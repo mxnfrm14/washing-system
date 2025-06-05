@@ -106,9 +106,9 @@ class Pumps(ctk.CTkFrame):
         column_widths = [
             140,  # Pump Category
             140,  # Number of output
-            140,  # Pump Name
-            140,  # Number of WC (O1)
-            140,  # Number of WC (O2)
+            200,  # Pump Name
+            160,  # Number of WC (O1)
+            160,  # Number of WC (O2)
         ]
 
          # Create the custom table with specified column widths
@@ -121,7 +121,7 @@ class Pumps(ctk.CTkFrame):
                 edit_command=self.show_edit_dialog,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                # column_widths=column_widths,  # Add custom column widths
+                column_widths=column_widths,  # Add custom column widths
             )
             self.table.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
         except Exception as e:

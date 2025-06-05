@@ -201,18 +201,9 @@ class Sequences(ctk.CTkFrame):
             self.content_frame,
             controller,
             width=600,
-            height=400
+            height=300
         )
         self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0), pady=(0, 20))
-
-        # Total duration label
-        self.duration_label = ctk.CTkLabel(
-            self.content_frame, 
-            text="Total washing duration: 0.0 sec", 
-            font=controller.fonts.get("default", None),
-            anchor="center"
-        )
-        self.duration_label.grid(row=1, column=1, padx=10, pady=10)
 
     def create_task_row(self, task_name, initial_priority, row_num):
         """Create a row with task name and priority selector"""
@@ -293,7 +284,6 @@ class Sequences(ctk.CTkFrame):
         
         # Clear the visualization
         self.sequence_visualizer.clear_visualization()
-        self.duration_label.configure(text="Total washing duration: 0.0 sec")
     
     def on_priority_change(self, task, priority):
         """Handle priority change"""
@@ -337,9 +327,6 @@ class Sequences(ctk.CTkFrame):
             except ValueError:
                 print(f"Invalid duration for task: {row['task_name']}")
         
-        # Update the total duration label
-        self.duration_label.configure(text=f"Total washing duration: {total_duration:.1f} sec")
-        
         # Update the sequence visualizer
         self.sequence_visualizer.update_visualization(tasks_data)
     
@@ -354,4 +341,52 @@ class Sequences(ctk.CTkFrame):
 
     def save_configuration(self):
         """Save the configuration via the controller"""
-        print("Configuration saved!")
+        # Collect all task data
+        tasks_data = []
+        total_duration_seconds = 0
+        
+        for row in self.task_rows:
+            try:
+                duration_text = row['duration_entry'].get()
+                if not duration_text:  # Skip empty entries
+                    continue
+                    
+                duration = float(duration_text)
+                unit = row['unit_dropdown'].get()
+                priority = row['priority_selector'].get()
+                task_name = row['task_name']
+                
+                # Convert to seconds for duration_seconds field
+                if unit == "ms":
+                    duration_seconds = duration / 1000.0
+                else:  # "s"
+                    duration_seconds = duration
+                    
+                total_duration_seconds += duration_seconds
+                
+                # Add task to the list
+                tasks_data.append({
+                    "name": task_name,
+                    "duration": duration,
+                    "unit": unit,
+                    "priority": priority,
+                    "duration_seconds": duration_seconds
+                })
+                
+            except ValueError:
+                print(f"Invalid duration for task: {row['task_name']} - skipping")
+        
+        # Create the sequence configuration dictionary
+        sequence_configuration = {
+            "sequence_configuration": {
+                "tasks": tasks_data,
+                "total_duration_seconds": total_duration_seconds,
+                "total_tasks": len(tasks_data)
+            }
+        }
+        
+        # Print the configuration
+        print(sequence_configuration)
+        
+        # Also return the data in case you want to use it elsewhere
+        return sequence_configuration

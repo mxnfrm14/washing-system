@@ -218,7 +218,10 @@ class Circuits(ctk.CTkFrame):
             "washing_components": [
                 {"name": "Component 1", "type": "component"},
                 {"name": "Component 2", "type": "component"},
-                {"name": "Component 3", "type": "component"}
+                {"name": "Component 3", "type": "component"},
+                {"name": "Component 4", "type": "component"},
+                {"name": "Component 5", "type": "component"},
+                {"name": "Component 6", "type": "component"}
             ]
         }
     

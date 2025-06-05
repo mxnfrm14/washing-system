@@ -79,14 +79,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
         )
         row += 1
         
-        # Number of nozzles
-        self._create_field_with_info(
-            row, "Number of nozzles",
-            self._create_nozzles_dropdown(),
-            info_tooltip=None
-        )
-        row += 1
-        
         # Nozzle Reference
         self._create_field_with_info(
             row, "Nozzle Reference",
@@ -209,19 +201,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
             width=250
         )
         self.component_dropdown = dropdown
-        return dropdown
-    
-    def _create_nozzles_dropdown(self):
-        """Create number of nozzles dropdown"""
-        self.nozzles_var = ctk.StringVar(value="Select number")
-        dropdown = ctk.CTkOptionMenu(
-            self.form_frame,
-            variable=self.nozzles_var,
-            values=["1", "2", "3", "4", "5"],
-            font=self.controller.fonts.get("default", None),
-            dropdown_font=self.controller.fonts.get("default", None),
-            width=250
-        )
         return dropdown
     
     def _create_nozzle_ref_dropdown(self):
@@ -405,10 +384,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
         # Validate inputs
         if self.component_var.get() == "Select component":
             self._show_error("Please select a component")
-            return
-        
-        if self.nozzles_var.get() == "Select number":
-            self._show_error("Please select number of nozzles")
             return
         
         if self.nozzle_ref_var.get() == "Select reference":

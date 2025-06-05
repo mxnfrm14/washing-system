@@ -178,7 +178,7 @@ class CircuitDesigner(ctk.CTkFrame):
     def _draw_grid(self):
         """Draw a grid overlay on the canvas"""
         grid_size = 20
-        width = 800  # Default size
+        width = 800 * 20  # Default size
         height = 600
         
         # Draw vertical lines
@@ -538,25 +538,72 @@ class CircuitDesigner(ctk.CTkFrame):
     def handle_connection_click(self, item_id):
         """Handle connection between components"""
         if self.first_connection_item_id is None:
-            # Start connection
+            # Start connection - check if component can accept more connections
+            item_data = self.placed_items[item_id]
+            if item_data['current_connections'] >= item_data['max_connections']:
+                messagebox.showwarning(
+                    "Connection Limit",
+                    f"Component '{item_data['name']}' has reached its maximum number of connections ({item_data['max_connections']})."
+                )
+                return
+            
             self.first_connection_item_id = item_id
             self.highlight_item(item_id, True)
         elif self.first_connection_item_id != item_id:
-            # Show pipe configuration dialog
+            # Check both components before proceeding
             from_item = self.placed_items[self.first_connection_item_id]
             to_item = self.placed_items[item_id]
+            
+            # Check if either component has reached its limit
+            if from_item['current_connections'] >= from_item['max_connections']:
+                messagebox.showwarning(
+                    "Connection Limit",
+                    f"Component '{from_item['name']}' has reached its maximum number of connections ({from_item['max_connections']})."
+                )
+                self.reset_connection_state()
+                return
+            
+            if to_item['current_connections'] >= to_item['max_connections']:
+                messagebox.showwarning(
+                    "Connection Limit",
+                    f"Component '{to_item['name']}' has reached its maximum number of connections ({to_item['max_connections']})."
+                )
+                self.reset_connection_state()
+                return
+            
+            # Check if connection already exists
+            if self.connection_exists(self.first_connection_item_id, item_id):
+                messagebox.showwarning(
+                    "Duplicate Connection",
+                    f"A connection already exists between '{from_item['name']}' and '{to_item['name']}'."
+                )
+                self.reset_connection_state()
+                return
+
+            # Determine correct direction for display
+            display_from_id, display_to_id = self._determine_connection_direction(self.first_connection_item_id, item_id)
+            
+            if display_from_id is None:
+                self.reset_connection_state()
+                return  # Invalid connection, error already shown
+            
+            display_from_item = self.placed_items[display_from_id]
+            display_to_item = self.placed_items[display_to_id]
+
+            self.highlight_item(item_id, True)  # Highlight target item
             
             # Store temporary variables to capture current state
             current_from_id = self.first_connection_item_id
             current_to_id = item_id
             
+            # Use the logically correct order for display
             dialog = PipeConfigDialog(
                 self,
                 self.controller,
-                from_component=from_item['name'],
-                to_component=to_item['name'],
+                from_component=display_from_item['name'],  # Use logical direction
+                to_component=display_to_item['name'],      # Use logical direction
                 on_save=lambda params: self.complete_connection(
-                    current_from_id, 
+                    current_from_id,  # But keep original click order for connection
                     current_to_id, 
                     params
                 )
@@ -565,34 +612,68 @@ class CircuitDesigner(ctk.CTkFrame):
         else:
             # Cancel connection
             self.reset_connection_state()
+
+    def connection_exists(self, from_id, to_id):
+        """Check if a connection already exists between two components"""
+        for conn in self.connectors:
+            if (conn['from_id'] == from_id and conn['to_id'] == to_id) or \
+               (conn['from_id'] == to_id and conn['to_id'] == from_id):
+                return True
+        return False
     
     def complete_connection(self, from_id, to_id, params):
         """Complete the connection and reset state"""
         self.create_connection(from_id, to_id, params)
+        self.highlight_item(from_id, False)
+        self.highlight_item(to_id, False)
         self.reset_connection_state()
     
     def create_connection(self, from_id, to_id, parameters=None):
         """Create a connection between two components"""
         if from_id not in self.placed_items or to_id not in self.placed_items:
-            return
+            print("Error: One or both components not found")
+            return False
         
         from_item = self.placed_items[from_id]
         to_item = self.placed_items[to_id]
         
-        # Check connection limits
+        # Double-check connection limits (safety check)
         if from_item['current_connections'] >= from_item['max_connections']:
-            print(f"Maximum connections reached for {from_item['name']}")
-            return
+            messagebox.showerror(
+                "Connection Error",
+                f"Cannot connect: {from_item['name']} has reached its maximum connections ({from_item['max_connections']})."
+            )
+            return False
         
         if to_item['current_connections'] >= to_item['max_connections']:
-            print(f"Maximum connections reached for {to_item['name']}")
-            return
+            messagebox.showerror(
+                "Connection Error",
+                f"Cannot connect: {to_item['name']} has reached its maximum connections ({to_item['max_connections']})."
+            )
+            return False
         
-        # Create visual connection
-        x1, y1 = from_item['coords']
-        x2, y2 = to_item['coords']
+        # Check for duplicate connections
+        if self.connection_exists(from_id, to_id):
+            messagebox.showwarning(
+                "Duplicate Connection",
+                f"A connection already exists between {from_item['name']} and {to_item['name']}."
+            )
+            return False
         
-        # Create line with arrow
+        # Determine correct direction based on component types
+        actual_from_id, actual_to_id = self._determine_connection_direction(from_id, to_id)
+        
+        if actual_from_id is None:
+            return False  # Invalid connection
+        
+        actual_from_item = self.placed_items[actual_from_id]
+        actual_to_item = self.placed_items[actual_to_id]
+        
+        # Create visual connection with correct direction
+        x1, y1 = actual_from_item['coords']
+        x2, y2 = actual_to_item['coords']
+        
+        # Create line with arrow pointing in the correct direction
         line_id = self.canvas.create_line(
             x1, y1, x2, y2,
             fill="#243783",
@@ -609,24 +690,85 @@ class CircuitDesigner(ctk.CTkFrame):
         # Keep reset button on top
         self.canvas.tag_raise("reset_button")
         
-        # Store connection with parameters
+        # Store connection with parameters (using actual direction)
         connection_data = {
             'line_id': line_id,
-            'from_id': from_id,
-            'to_id': to_id,
-            'from_name': from_item['name'],
-            'to_name': to_item['name'],
+            'from_id': actual_from_id,
+            'to_id': actual_to_id,
+            'from_name': actual_from_item['name'],
+            'to_name': actual_to_item['name'],
             'parameters': parameters or {}
         }
         self.connectors.append(connection_data)
         
-        # Update connection counts
+        # Update connection counts for both original items
         from_item['current_connections'] += 1
         to_item['current_connections'] += 1
         
         # Update labels
         self.update_component_label(from_id)
         self.update_component_label(to_id)
+        
+        print(f"Connection created: {actual_from_item['name']} -> {actual_to_item['name']}")
+        return True
+
+    def _determine_connection_direction(self, item1_id, item2_id):
+        """Determine the correct direction for a connection based on component types"""
+        item1 = self.placed_items[item1_id]
+        item2 = self.placed_items[item2_id]
+        
+        direction1 = item1['direction']
+        direction2 = item2['direction']
+        type1 = item1['type']
+        type2 = item2['type']
+        
+        # Check for invalid connections
+        if direction1 == 'out' and direction2 == 'out':
+            messagebox.showerror(
+                "Invalid Connection",
+                f"Cannot connect two output components: {item1['name']} and {item2['name']}"
+            )
+            return None, None
+        
+        if direction1 == 'in' and direction2 == 'in':
+            messagebox.showerror(
+                "Invalid Connection", 
+                f"Cannot connect two input components: {item1['name']} and {item2['name']}"
+            )
+            return None, None
+        
+        # Determine correct direction
+        if direction1 == 'out' and direction2 == 'in':
+            # item1 (pump) -> item2 (component)
+            return item1_id, item2_id
+        elif direction1 == 'in' and direction2 == 'out':
+            # item2 (pump) -> item1 (component)
+            return item2_id, item1_id
+        elif direction1 == 'out' and direction2 == 'both':
+            # item1 (pump) -> item2 (connector)
+            return item1_id, item2_id
+        elif direction1 == 'both' and direction2 == 'out':
+            # item2 (pump) -> item1 (connector)
+            return item2_id, item1_id
+        elif direction1 == 'in' and direction2 == 'both':
+            # item2 (connector) -> item1 (component)
+            return item2_id, item1_id
+        elif direction1 == 'both' and direction2 == 'in':
+            # item1 (connector) -> item2 (component)
+            return item1_id, item2_id
+        elif direction1 == 'both' and direction2 == 'both':
+            # Both are connectors - use original order but show warning
+            messagebox.showinfo(
+                "Connector Connection",
+                f"Connected {item1['name']} to {item2['name']}. Flow direction: {item1['name']} -> {item2['name']}"
+            )
+            return item1_id, item2_id
+        else:
+            messagebox.showerror(
+                "Invalid Connection",
+                f"Cannot determine connection direction between {item1['name']} and {item2['name']}"
+            )
+            return None, None
     
     def edit_connection(self, connection):
         """Edit an existing connection"""

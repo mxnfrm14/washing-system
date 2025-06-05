@@ -132,7 +132,7 @@ class WashingComponent(ctk.CTkFrame):
         # Image
         self.image = ctk.CTkImage(light_image=Image.open("assets/images/image.png"),
                                   dark_image=Image.open("assets/images/image.png"), 
-                                  size=(275, 390))
+                                  size=(275, 350))
         self.image_label = ctk.CTkLabel(self.content_frame, text="", image=self.image, compound="top")
         self.image_label.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(10, 0), pady=(0, 10))
 

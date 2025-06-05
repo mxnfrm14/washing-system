@@ -1,11 +1,19 @@
 import customtkinter as ctk
 from components.custom_button import CustomButton
+import json
 
 class GeneralSettings(ctk.CTkFrame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
         ctk.set_default_color_theme("theme.json")
+
+        # Tank data dictionary (will be replaced with database later)
+        self.tank_data = {
+            "Tank S": {"supplier": "ChemCorp Ltd", "volume": "50"},
+            "Tank M": {"supplier": "FluidTech Inc", "volume": "150"},
+            "Tank L": {"supplier": "AquaSystems Pro", "volume": "300"}
+        }
 
         # Create main container for better layout control
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
@@ -159,17 +167,18 @@ class GeneralSettings(ctk.CTkFrame):
 
         self.tank_ref_dropdown = ctk.CTkOptionMenu(
             self.form_container,
-            values=["Tank A", "Tank B", "Tank C"],
+            values=["Tank S", "Tank M", "Tank L"],
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
-            width=230
+            width=230,
+            command=self.update_tank_details
         )
         self.tank_ref_dropdown.set("Select tank")
         self.tank_ref_dropdown.grid(row=1, column=4, columnspan=2, sticky="w", pady=10)
 
         # Tank ref details (Supplier and Volume)
         self.tank_details_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.tank_details_frame.grid(row=2, column=4, columnspan=2, sticky="w", pady=(0, 10))
+        self.tank_details_frame.grid(row=2, column=3, columnspan=3, sticky="ew", pady=(0, 10))
         
         self.supplier_label = ctk.CTkLabel(
             self.tank_details_frame,
@@ -269,9 +278,40 @@ class GeneralSettings(ctk.CTkFrame):
     # =========================== Methodes ==========================
     def save_configuration(self):
         """Save the current configuration"""
-        # Implement save functionality here
-        print("Saving configuration...")
-        # You can add file dialog and save logic here
+        # Collect all form values
+        config_data = {
+            "liquid_name": self.liquid_name_dropdown.get(),
+            "vehicle": self.vehicle_entry.get(),
+            "liquid_temperature": {
+                "value": self.liquid_temp_entry.get(),
+                "unit": self.temp_unit_dropdown.get()
+            },
+            "tank_ref": self.tank_ref_dropdown.get(),
+            "liquid_volume": {
+                "value": self.liquid_volume_entry.get(),
+                "unit": self.volume_unit_dropdown.get()
+            },
+            "power_voltage": {
+                "value": self.power_voltage_entry.get(),
+                "unit": self.voltage_unit_dropdown.get()
+            },
+            "dirt_type": self.dirt_type_dropdown.get()
+        }
+
+        # Print individual values
+        print("=== Configuration Values ===")
+        print(f"Liquid Name: {config_data['liquid_name']}")
+        print(f"Vehicle: {config_data['vehicle']}")
+        print(f"Liquid Temperature: {config_data['liquid_temperature']['value']} {config_data['liquid_temperature']['unit']}")
+        print(f"Tank Reference: {config_data['tank_ref']}")
+        print(f"Liquid Volume: {config_data['liquid_volume']['value']} {config_data['liquid_volume']['unit']}")
+        print(f"Power Voltage: {config_data['power_voltage']['value']} {config_data['power_voltage']['unit']}")
+        print(f"Dirt Type: {config_data['dirt_type']}")
+
+        # Convert to JSON and print
+        config_json = json.dumps(config_data, indent=2)
+        print("\n=== JSON Configuration ===")
+        print(config_json)
         
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -297,3 +337,13 @@ class GeneralSettings(ctk.CTkFrame):
                 self.fareniheit_label.configure(text=f"{fahrenheit:.1f}°F")
             except:
                 self.fareniheit_label.configure(text="0.0°F")
+
+    def update_tank_details(self, selected_tank):
+        """Update supplier and volume labels based on selected tank"""
+        if selected_tank in self.tank_data:
+            tank_info = self.tank_data[selected_tank]
+            self.supplier_label.configure(text=f"Supplier : {tank_info['supplier']}")
+            self.volume_label.configure(text=f"Volume : {tank_info['volume']} L")
+        else:
+            self.supplier_label.configure(text="Supplier : XXXXXX")
+            self.volume_label.configure(text="Volume : X L")
