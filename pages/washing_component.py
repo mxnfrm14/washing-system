@@ -59,7 +59,7 @@ class WashingComponent(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("pumps")
+            command=lambda: self.save_and_next()
         )
         self.next_button.pack(side="right")
 
@@ -71,7 +71,7 @@ class WashingComponent(ctk.CTkFrame):
             icon_path="assets/icons/back.png",
             icon_side="left",
             outlined=True,
-            command=lambda: controller.show_page("general_settings")
+            command=lambda: self.save_and_back()
         )
         self.back_button.pack(side="left")
 
@@ -172,19 +172,39 @@ class WashingComponent(ctk.CTkFrame):
             self.table.remove_row(index)
             print(f"Deleted component at index {index}")
 
+    def get_configuration(self):
+        """Get the current configuration from the table"""
+        return self.table.get_all_data() if hasattr(self, 'table') else []
+
+    def load_configuration(self, config_data):
+        """Load configuration into the table"""
+        try:
+            components = config_data.get("washing_components", [])
+            if hasattr(self, 'table') and components:
+                # Clear existing data
+                self.table.clear_all_data()
+                # Load new data
+                for component in components:
+                    self.table.add_row(component)
+        except Exception as e:
+            print(f"Error loading washing components configuration: {e}")
+
     def save_configuration(self):
         """Save the current configuration"""
-        # Get all data from the table
-        all_components = self.table.get_all_data()
+        all_components = self.get_configuration()
         
-        print("Saving configuration...")
+        # Update controller's config data
+        self.controller.update_config_data("washing_components", all_components)
+        
         print(f"Total components: {len(all_components)}")
         for i, component in enumerate(all_components):
             print(f"Component {i+1}: {component}")
         
-        # Here you would typically save to a database or file
-        # For now, just show a success message
-        messagebox.showinfo("Success", f"Configuration saved successfully!\n\n{len(all_components)} components saved.")
+        # Save to disk
+        if self.controller.save_whole_configuration():
+            messagebox.showinfo("Success", f"Configuration saved successfully!\n\n{len(all_components)} components saved.")
+        else:
+            messagebox.showerror("Error", "Failed to save configuration!")
         
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -194,3 +214,13 @@ class WashingComponent(ctk.CTkFrame):
                 self.table.update_appearance()
             except Exception as e:
                 print(f"Error updating table appearance: {e}")
+    
+    def save_and_next(self):
+        """Save configuration and navigate to the next page"""
+        self.controller.save_current_page_config()
+        self.controller.show_page("pumps")
+    
+    def save_and_back(self):
+        """Save configuration and navigate to the previous page"""
+        self.controller.save_current_page_config()
+        self.controller.show_page("general_settings")

@@ -41,12 +41,12 @@ class NavigationMenu(ctk.CTkFrame):
         
         # Create indicator for each page
         for page_name, (display_name, index) in self.pages.items():
-            # Create indicator frame with proper callback
+            # Create indicator frame with proper callback that saves before switching
             indicator = CircleIndicator(
                 self.nav_frame, 
                 text=display_name,
                 index=index,
-                callback=lambda p=page_name: self.controller.show_page(p),
+                callback=lambda p=page_name: self.navigate_to_page(p),
                 controller=self.controller
             )
             indicator.grid(row=0, column=index, padx=30,)
@@ -58,6 +58,21 @@ class NavigationMenu(ctk.CTkFrame):
         else:
             # Default to first indicator
             self.set_active_indicator(0)
+    
+    def navigate_to_page(self, page_name):
+        """Navigate to a page after saving current page configuration"""
+        try:
+            # Save current page configuration before switching
+            if hasattr(self.controller, 'save_current_page_config'):
+                self.controller.save_current_page_config()
+                print(f"Configuration saved before navigating from {self.controller.current_page} to {page_name}")
+            
+            # Navigate to the new page
+            if hasattr(self.controller, 'show_page'):
+                self.controller.show_page(page_name)
+            
+        except Exception as e:
+            print(f"Error navigating to page {page_name}: {e}")
     
     def set_active_indicator(self, index):
         """Set active indicator based on index"""

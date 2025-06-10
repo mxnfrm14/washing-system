@@ -1,4 +1,7 @@
 import customtkinter as ctk
+import json
+import os
+from datetime import datetime
 
 class PageController:
     def __init__(self, container, app):
@@ -6,11 +9,21 @@ class PageController:
         self.app = app
         self.pages = {}
         self.current_page = None
-        self.page_change_callback = None
         self.navigation_menu = None
         
         # Get fonts from app if available
         self.fonts = getattr(app, 'fonts', {})
+
+        self.config_data = {
+            "general_settings": {},
+            "washing_components": [],
+            "pumps": [],
+            "circuits": [],
+            "sequences": {}
+        }
+        
+        # Configuration file path
+        self.config_file = "washing_system_config.json"
     
     def set_navigation_menu(self, navigation_menu):
         """Set the navigation menu for this controller"""
@@ -65,3 +78,124 @@ class PageController:
         else:
             print(f"Page not found: {page_name}")
             return False
+
+    def save_current_page_config(self):
+        """Save the current configuration when changing pages"""
+        if not self.current_page or self.current_page not in self.pages:
+            return
+            
+        page = self.pages[self.current_page]
+        
+        try:
+            if self.current_page == "general_settings":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["general_settings"] = page.get_configuration()
+                    
+            elif self.current_page == "washing_components":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["washing_components"] = page.get_configuration()
+                    
+            elif self.current_page == "pumps":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["pumps"] = page.get_configuration()
+                    
+            elif self.current_page == "circuits":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["circuits"] = page.get_configuration()
+                    
+            elif self.current_page == "sequences":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["sequences"] = page.get_configuration()
+                    
+            print(f"Saved configuration for {self.current_page}")
+            
+        except Exception as e:
+            print(f"Error saving configuration for {self.current_page}: {e}")
+    
+    def load_page_config(self, page_name):
+        """Load configuration for a page that depends on previous pages"""
+        if page_name not in self.pages:
+            return
+            
+        page = self.pages[page_name]
+        
+        try:
+            if page_name == "circuits":
+                # Circuits page needs data from general_settings, washing_components, and pumps
+                circuit_config = {
+                    "general_settings": self.config_data["general_settings"],
+                    "washing_components": self.config_data["washing_components"],
+                    "pumps": self.config_data["pumps"]
+                }
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(circuit_config)
+                    
+            elif page_name == "sequences":
+                # Sequences page needs data from previous pages
+                sequence_config = {
+                    "general_settings": self.config_data["general_settings"],
+                    "washing_components": self.config_data["washing_components"],
+                    "pumps": self.config_data["pumps"],
+                    "circuits": self.config_data["circuits"]
+                }
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(sequence_config)
+                    
+            elif page_name == "results":
+                # Results page needs all previous data
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(self.config_data)
+                    
+        except Exception as e:
+            print(f"Error loading configuration for {page_name}: {e}")
+
+    def save_whole_configuration(self):
+        """Save the whole configuration to disk"""
+        try:
+            # Save current page before saving to file
+            self.save_current_page_config()
+            
+            # Add metadata
+            config_with_metadata = {
+                "version": "1.0",
+                "timestamp": str(datetime.now()),
+                "configuration": self.config_data
+            }
+            
+            # Save to file
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(config_with_metadata, f, indent=2, ensure_ascii=False)
+            
+            print(f"Configuration saved to {self.config_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Error saving configuration to file: {e}")
+            return False
+    
+    def load_whole_configuration(self):
+        """Load the whole configuration from disk"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    
+                if "configuration" in data:
+                    self.config_data = data["configuration"]
+                    print(f"Configuration loaded from {self.config_file}")
+                    return True
+        except Exception as e:
+            print(f"Error loading configuration from file: {e}")
+        
+        return False
+    
+    def get_config_data(self, section=None):
+        """Get configuration data for a specific section or all data"""
+        if section:
+            return self.config_data.get(section, {})
+        return self.config_data
+    
+    def update_config_data(self, section, data):
+        """Update configuration data for a specific section"""
+        self.config_data[section] = data
+        print(f"Updated configuration for section: {section}")

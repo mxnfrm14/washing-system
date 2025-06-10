@@ -191,9 +191,8 @@ class Circuits(ctk.CTkFrame):
     def _get_config_from_controller(self):
         """Get configuration from controller (from previous pages)"""
         # Try to get actual config from controller
-        if hasattr(self.controller, 'get_circuit_config'):
-            return self.controller.get_circuit_config()
         
+
         # Default example config
         return {
             "pumps": [

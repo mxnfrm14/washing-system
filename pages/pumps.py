@@ -172,16 +172,37 @@ class Pumps(ctk.CTkFrame):
             except Exception as e:
                 print(f"Error updating table appearance: {e}")
 
+    def get_configuration(self):
+        """Get the current configuration from the table"""
+        return self.table.get_all_data() if hasattr(self, 'table') else []
+
+    def load_configuration(self, config_data):
+        """Load configuration into the table"""
+        try:
+            pumps = config_data.get("pumps", [])
+            if hasattr(self, 'table') and pumps:
+                # Clear existing data
+                self.table.clear_all_data()
+                # Load new data
+                for pump in pumps:
+                    self.table.add_row(pump)
+        except Exception as e:
+            print(f"Error loading pumps configuration: {e}")
+
     def save_configuration(self):
         """Save the configuration via the controller"""
-        # Get all data from the table
-        all_pumps = self.table.get_all_data()
+        all_pumps = self.get_configuration()
+        
+        # Update controller's config data
+        self.controller.update_config_data("pumps", all_pumps)
         
         print("Saving pump configuration...")
         print(f"Total pumps: {len(all_pumps)}")
         for i, pump in enumerate(all_pumps):
             print(f"Pump {i+1}: {pump}")
         
-        # Here you would typically save to a database or file
-        # For now, just show a success message
-        messagebox.showinfo("Success", f"Pump configuration saved successfully!\n\n{len(all_pumps)} pumps saved.")
+        # Save to disk
+        if self.controller.save_whole_configuration():
+            messagebox.showinfo("Success", f"Pump configuration saved successfully!\n\n{len(all_pumps)} pumps saved.")
+        else:
+            messagebox.showerror("Error", "Failed to save pump configuration!")

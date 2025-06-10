@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from components.custom_button import CustomButton
-import json
+
 
 class GeneralSettings(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -62,7 +62,7 @@ class GeneralSettings(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("washing_components")
+            command=lambda: self.save_and_next()
         )
         self.next_button.pack(side="right")
 
@@ -276,10 +276,9 @@ class GeneralSettings(ctk.CTkFrame):
 
     
     # =========================== Methodes ==========================
-    def save_configuration(self):
-        """Save the current configuration"""
-        # Collect all form values
-        config_data = {
+    def get_configuration(self):
+        """Get the current configuration from the form"""
+        return {
             "liquid_name": self.liquid_name_dropdown.get(),
             "vehicle": self.vehicle_entry.get(),
             "liquid_temperature": {
@@ -297,21 +296,45 @@ class GeneralSettings(ctk.CTkFrame):
             },
             "dirt_type": self.dirt_type_dropdown.get()
         }
+    
+    def load_configuration(self, config_data):
+        """Load configuration into the form"""
+        try:
+            config = config_data.get("general_settings", {})
+            
+            if config.get("liquid_name"):
+                self.liquid_name_dropdown.set(config["liquid_name"])
+            if config.get("vehicle"):
+                self.vehicle_entry.insert(0, config["vehicle"])
+            if config.get("liquid_temperature"):
+                temp_config = config["liquid_temperature"]
+                if temp_config.get("value"):
+                    self.liquid_temp_entry.insert(0, temp_config["value"])
+                if temp_config.get("unit"):
+                    self.temp_unit_dropdown.set(temp_config["unit"])
+            # ... continue for other fields
+            
+        except Exception as e:
+            print(f"Error loading general settings configuration: {e}")
 
-        # Print individual values
-        print("=== Configuration Values ===")
-        print(f"Liquid Name: {config_data['liquid_name']}")
-        print(f"Vehicle: {config_data['vehicle']}")
-        print(f"Liquid Temperature: {config_data['liquid_temperature']['value']} {config_data['liquid_temperature']['unit']}")
-        print(f"Tank Reference: {config_data['tank_ref']}")
-        print(f"Liquid Volume: {config_data['liquid_volume']['value']} {config_data['liquid_volume']['unit']}")
-        print(f"Power Voltage: {config_data['power_voltage']['value']} {config_data['power_voltage']['unit']}")
-        print(f"Dirt Type: {config_data['dirt_type']}")
-
-        # Convert to JSON and print
-        config_json = json.dumps(config_data, indent=2)
-        print("\n=== JSON Configuration ===")
-        print(config_json)
+    def save_configuration(self):
+        """Save the configuration via the controller"""
+        config_data = self.get_configuration()
+        
+        # Update controller's config data
+        self.controller.update_config_data("general_settings", config_data)
+        
+        # # Print for debugging
+        # print("=== Configuration Values ===")
+        # print(f"Liquid Name: {config_data['liquid_name']}")
+        # print(f"Vehicle: {config_data['vehicle']}")
+        # # ... continue printing other values
+        
+        # Save to disk
+        if self.controller.save_whole_configuration():
+            print("Configuration saved successfully!")
+        else:
+            print("Error saving configuration!")
         
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -347,3 +370,10 @@ class GeneralSettings(ctk.CTkFrame):
         else:
             self.supplier_label.configure(text="Supplier : XXXXXX")
             self.volume_label.configure(text="Volume : X L")
+    
+    def save_and_next(self):
+        """Save configuration and navigate to the next page"""
+        self.controller.save_current_page_config()
+        # self.controller.update_config_data("general_settings", self.get_configuration())
+        # print(self.controller.get_config_data("general_settings"))
+        self.controller.show_page("washing_components")
