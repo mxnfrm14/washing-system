@@ -420,7 +420,9 @@ class CircuitDesigner(ctk.CTkFrame):
         # Store component data
         self.placed_items[item_id] = {
             'type': comp_type,
+            'id': component.get('id', ''),  # Store unique ID
             'name': component.get('name', comp_type),
+            'display_name': component.get('display_name', component.get('name', comp_type)),  # Store display name
             'coords': (x, y),
             'label_id': label_id,
             'current_connections': 0,
@@ -440,15 +442,15 @@ class CircuitDesigner(ctk.CTkFrame):
         
         # Notify about component placement (only for pumps and components, not connectors)
         if comp_type in ["pump", "component"]:
-            component_name = component.get('name', comp_type)
+            component_id = component.get('id', component.get('name', comp_type))
             
             # If we have a circuits controller, use it to sync all tabs
             if self.circuits_controller and hasattr(self.circuits_controller, '_on_component_placement'):
-                self.circuits_controller._on_component_placement(component_name, placed=True)
+                self.circuits_controller._on_component_placement(component_id, placed=True)
                 self.set_mode({"mode": "move", "component": None})  # Switch back to move mode
             # Otherwise, just update local detail list
             elif self.detail_list:
-                self.detail_list.mark_component_placed(component_name)
+                self.detail_list.mark_component_placed(component_id)
     
     def _create_placeholder_shape(self, x, y, comp_type):
         """Create a placeholder shape when icon is not available"""
@@ -502,7 +504,7 @@ class CircuitDesigner(ctk.CTkFrame):
         components_to_free = []
         for item_id, item_data in self.placed_items.items():
             if item_data['type'] in ["pump", "component"]:
-                components_to_free.append(item_data['name'])
+                components_to_free.append(item_data.get('id', item_data['name']))
         
         # Delete all connections
         for conn in self.connectors[:]:  # Use slice to avoid modifying list while iterating
@@ -521,12 +523,12 @@ class CircuitDesigner(ctk.CTkFrame):
         # Notify about components being freed
         if self.circuits_controller and hasattr(self.circuits_controller, '_on_component_placement'):
             # Use circuits controller to sync all tabs
-            for component_name in components_to_free:
-                self.circuits_controller._on_component_placement(component_name, placed=False)
+            for component_id in components_to_free:
+                self.circuits_controller._on_component_placement(component_id, placed=False)
         elif self.detail_list:
             # Just update local detail list
-            for component_name in components_to_free:
-                self.detail_list.mark_component_available(component_name)
+            for component_id in components_to_free:
+                self.detail_list.mark_component_available(component_id)
         
         # Reset states
         self.reset_connection_state()
@@ -851,14 +853,14 @@ class CircuitDesigner(ctk.CTkFrame):
         
         # Notify about component removal (only for pumps and components)
         if item['type'] in ["pump", "component"]:
-            component_name = item['name']
+            component_id = item.get('id', item['name'])
             
             # If we have a circuits controller, use it to sync all tabs
             if self.circuits_controller and hasattr(self.circuits_controller, '_on_component_placement'):
-                self.circuits_controller._on_component_placement(component_name, placed=False)
+                self.circuits_controller._on_component_placement(component_id, placed=False)
             # Otherwise, just update local detail list
             elif self.detail_list:
-                self.detail_list.mark_component_available(component_name)
+                self.detail_list.mark_component_available(component_id)
         
         del self.placed_items[item_id]
     
@@ -953,11 +955,11 @@ class CircuitDesigner(ctk.CTkFrame):
         self._drag_data = {"x": 0, "y": 0, "item": None, "offset_x": 0, "offset_y": 0}
     
     def get_placed_components(self):
-        """Get list of all placed component names (pumps and components only)"""
+        """Get list of all placed component IDs (pumps and components only)"""
         placed = []
         for item_data in self.placed_items.values():
             if item_data['type'] in ["pump", "component"]:
-                placed.append(item_data['name'])
+                placed.append(item_data.get('id', item_data['name']))
         return placed
     
     def get_circuit_data(self):

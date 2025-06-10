@@ -7,4 +7,5 @@ if __name__ == "__main__":
         controller.start()
     except Exception as e:
         print(f"Error starting application: {e}")
-        traceback.print_exc()   
+        traceback.print_exc()
+        input("Press Enter to exit...")

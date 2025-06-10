@@ -78,12 +78,26 @@ class DetailList(ctk.CTkFrame):
         # Pump header
         pump_header = ctk.CTkLabel(
             self.main_container,
-            text="Pumps",
+            text="Pump",
             font=self.controller.fonts.get("subtitle", None),
             text_color=colors['text_color']
         )
         pump_header.pack(anchor="w", padx=10, pady=(20, 5))
         self.appearance_widgets['labels'].append(pump_header)
+        
+        # Check if pump data is available
+        if not self.config.get('pump') or not self.config['pump'].get('name'):
+            # Show message for no pumps
+            no_pump_label = ctk.CTkLabel(
+                self.main_container,
+                text="No pump configured for this tab.",
+                font=self.controller.fonts.get("default", None),
+                text_color="#FF6B6B",  # Red color for warning
+                justify="left"
+            )
+            no_pump_label.pack(anchor="w", padx=20, pady=10)
+            self.appearance_widgets['labels'].append(no_pump_label)
+            return
         
         # Pump info frame
         self.pump_info_frame = ctk.CTkFrame(
@@ -99,13 +113,15 @@ class DetailList(ctk.CTkFrame):
         # Pump button
         pump_data = {
             "type": "pump", 
+            "id": self.config['pump'].get('id', 'pump_0'),  # Use unique ID
             "name": self.config['pump']['name'], 
+            "display_name": self.config['pump'].get('display_name', self.config['pump']['name']),  # Use display name
             "max_connections": self.config['pump']['outputs'],  # Use outputs as max connections
             "properties": self.config['pump']
         }
         self.pump_button = ctk.CTkButton(
             self.pump_info_frame,
-            text=f"{self.config['pump']['name']}\nOutputs: {self.config['pump']['outputs']}",
+            text=f"{pump_data['display_name']}\nOutputs: {self.config['pump']['outputs']}",
             anchor="w",
             command=lambda: self._on_component_click(pump_data, self.pump_button),
             fg_color="transparent",
@@ -118,8 +134,8 @@ class DetailList(ctk.CTkFrame):
         self.pump_button.pack(fill="x", padx=10, pady=5)
         self.appearance_widgets['buttons'].append(self.pump_button)
         
-        # Store pump button in map
-        self.component_buttons_map[self.config['pump']['name']] = self.pump_button
+        # Store pump button in map using unique ID
+        self.component_buttons_map[self.config['pump'].get('id', 'pump_0')] = self.pump_button
 
         # Output labels
         self.output_labels = []
@@ -147,16 +163,37 @@ class DetailList(ctk.CTkFrame):
         washing_header.pack(anchor="w", padx=10, pady=(20, 5))
         self.appearance_widgets['labels'].append(washing_header)
         
+        # Check if washing components are available
+        washing_components = self.config.get('washing_components', [])
+        if not washing_components:
+            # Show message for no components
+            no_components_label = ctk.CTkLabel(
+                self.main_container,
+                text="No washing components configured.\nPlease configure components in the previous page.",
+                font=self.controller.fonts.get("default", None),
+                text_color="#FF6B6B",  # Red color for warning
+                justify="left"
+            )
+            no_components_label.pack(anchor="w", padx=20, pady=10)
+            self.appearance_widgets['labels'].append(no_components_label)
+            return
+        
         # Component buttons
         self.component_buttons = []
-        for component in self.config.get('washing_components', []):
+        for component in washing_components:
             # Ensure component is a dict
             if isinstance(component, str):
                 component = {"name": component, "type": "component"}
             
+            # Add unique ID and display name if not present
+            if 'id' not in component:
+                component['id'] = f"component_{len(self.component_buttons)}"
+            if 'display_name' not in component:
+                component['display_name'] = component.get('name', 'Unknown')
+            
             comp_button = ctk.CTkButton(
                 self.main_container,
-                text=component.get('name', 'Unknown'),
+                text=component.get('display_name', 'Unknown'),
                 anchor="w",
                 command=lambda c=component, b=None: self._on_component_click(c, b),
                 fg_color="transparent",
@@ -172,15 +209,15 @@ class DetailList(ctk.CTkFrame):
             self.component_buttons.append(comp_button)
             self.appearance_widgets['buttons'].append(comp_button)
             
-            # Store in map
-            self.component_buttons_map[component.get('name', 'Unknown')] = comp_button
+            # Store in map using unique ID
+            self.component_buttons_map[component.get('id', 'unknown')] = comp_button
     
     def _on_component_click(self, component, button):
         """Handle component selection"""
-        # Check if component is already placed
-        component_name = component.get('name', '')
-        if component_name in self.placed_components:
-            print(f"Component {component_name} is already placed")
+        # Check if component is already placed using unique ID
+        component_id = component.get('id', '')
+        if component_id in self.placed_components:
+            print(f"Component {component.get('display_name', 'Unknown')} is already placed")
             return
         
         # Update visual selection
@@ -193,24 +230,24 @@ class DetailList(ctk.CTkFrame):
         if self.on_component_select:
             self.on_component_select(component)
         
-        print(f"Component selected: {component} - switching to place mode")
+        print(f"Component selected: {component.get('display_name', 'Unknown')} - switching to place mode")
     
     def _update_selection(self, selected_button):
         """Update visual selection state"""
         # Don't allow selection of placed components
         if selected_button:
-            # Find component name
-            component_name = None
+            # Find component ID
+            component_id = None
             if selected_button == self.pump_button:
-                component_name = self.config['pump']['name']
+                component_id = self.config['pump'].get('id', 'pump_0')
             else:
-                for name, btn in self.component_buttons_map.items():
+                for comp_id, btn in self.component_buttons_map.items():
                     if btn == selected_button:
-                        component_name = name
+                        component_id = comp_id
                         break
             
             # Check if component is already placed
-            if component_name and component_name in self.placed_components:
+            if component_id and component_id in self.placed_components:
                 return  # Don't select placed components
         
         colors = self._get_appearance_colors()
@@ -218,16 +255,16 @@ class DetailList(ctk.CTkFrame):
         # Reset previous selection
         if self.selected_button and self.selected_button != selected_button:
             # Only reset if not placed
-            component_name = None
+            component_id = None
             if self.selected_button == self.pump_button:
-                component_name = self.config['pump']['name']
+                component_id = self.config['pump'].get('id', 'pump_0')
             else:
-                for name, btn in self.component_buttons_map.items():
+                for comp_id, btn in self.component_buttons_map.items():
                     if btn == self.selected_button:
-                        component_name = name
+                        component_id = comp_id
                         break
             
-            if component_name not in self.placed_components:
+            if component_id not in self.placed_components:
                 self.selected_button.configure(
                     fg_color="transparent",
                     border_color=colors['border_color']
@@ -348,11 +385,11 @@ class DetailList(ctk.CTkFrame):
         AppearanceManager.unregister(self)
         super().destroy()
     
-    def mark_component_placed(self, component_name):
-        """Mark a component as placed and disable its button"""
-        if component_name in self.component_buttons_map:
-            self.placed_components.add(component_name)
-            button = self.component_buttons_map[component_name]
+    def mark_component_placed(self, component_id):
+        """Mark a component as placed and disable its button using unique ID"""
+        if component_id in self.component_buttons_map:
+            self.placed_components.add(component_id)
+            button = self.component_buttons_map[component_id]
             # Disable the button
             button.configure(
                 state="disabled",
@@ -360,15 +397,15 @@ class DetailList(ctk.CTkFrame):
                 text_color="gray40",
                 hover_color="gray70"
             )
-            print(f"Component {component_name} marked as placed")
+            print(f"Component {component_id} marked as placed")
     
-    def mark_component_available(self, component_name):
-        """Mark a component as available and enable its button"""
-        if component_name in self.placed_components:
-            self.placed_components.remove(component_name)
+    def mark_component_available(self, component_id):
+        """Mark a component as available and enable its button using unique ID"""
+        if component_id in self.placed_components:
+            self.placed_components.remove(component_id)
         
-        if component_name in self.component_buttons_map:
-            button = self.component_buttons_map[component_name]
+        if component_id in self.component_buttons_map:
+            button = self.component_buttons_map[component_id]
             colors = self._get_appearance_colors()
             # Re-enable the button
             button.configure(
@@ -377,10 +414,10 @@ class DetailList(ctk.CTkFrame):
                 text_color=colors['text_color'],
                 hover_color=colors['hover_color']
             )
-            print(f"Component {component_name} marked as available")
+            print(f"Component {component_id} marked as available")
     
     def reset_all_components(self):
         """Reset all components to available state"""
-        for component_name in list(self.placed_components):
-            self.mark_component_available(component_name)
+        for component_id in list(self.placed_components):
+            self.mark_component_available(component_id)
         self.placed_components.clear()

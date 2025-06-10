@@ -58,12 +58,22 @@ class PageController:
         """Show the specified page and trigger the page change callback."""
         if page_name in self.pages:
             try:
+                # Save current page configuration before switching
+                self.save_current_page_config()
+                
                 # Get the page and bring it to the front
                 page = self.pages[page_name]
                 page.tkraise()
                 
                 # Update the current page
                 self.current_page = page_name
+                
+                # Load configuration for the new page (this will refresh circuits page)
+                self.load_page_config(page_name)
+                
+                # Special handling for circuits page - always refresh
+                if page_name == "circuits" and hasattr(page, 'refresh_configuration'):
+                    page.refresh_configuration()
                 
                 # Update navigation menu if available
                 if self.navigation_menu and hasattr(self.navigation_menu, 'update_navigation_state'):
@@ -107,7 +117,7 @@ class PageController:
                 if hasattr(page, 'get_configuration'):
                     self.config_data["sequences"] = page.get_configuration()
                     
-            print(f"Saved configuration for {self.current_page}")
+            print(f"Saved configuration for {self.current_page}: {len(self.config_data.get(self.current_page, []))} items")
             
         except Exception as e:
             print(f"Error saving configuration for {self.current_page}: {e}")
@@ -199,3 +209,11 @@ class PageController:
         """Update configuration data for a specific section"""
         self.config_data[section] = data
         print(f"Updated configuration for section: {section}")
+    
+    def save_circuit_config(self, circuits_data):
+        """Save circuit configuration data"""
+        self.config_data["circuits"] = circuits_data
+        print(f"Saved circuit configuration to controller: {len(circuits_data)} circuits")
+        
+        # Also trigger a full save when circuits are saved via the save button
+        self.save_whole_configuration()
