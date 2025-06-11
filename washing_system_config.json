@@ -1,0 +1,202 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-06-11 15:05:03.905966",
+  "configuration": {
+    "general_settings": {
+      "liquid_name": "Select liquid",
+      "vehicle": "",
+      "liquid_temperature": {
+        "value": "",
+        "unit": "°C"
+      },
+      "tank_ref": "Select tank",
+      "liquid_volume": {
+        "value": "",
+        "unit": "L"
+      },
+      "power_voltage": {
+        "value": "",
+        "unit": "V"
+      },
+      "dirt_type": "Select dirt type"
+    },
+    "washing_components": [
+      {
+        "Component": "Component B",
+        "Nozzle Ref": "Nozzle Type B",
+        "D_C_N (mm)": "2112.0",
+        "DZ_P_N (mm)": "12.0",
+        "Intergration Angle": "12.0",
+        "Targeted Washing Preformance": "12.0"
+      },
+      {
+        "Component": "Component A",
+        "Nozzle Ref": "Nozzle Type A",
+        "D_C_N (mm)": "12.0",
+        "DZ_P_N (mm)": "1212.0",
+        "Intergration Angle": "2.0",
+        "Targeted Washing Preformance": "12.0"
+      },
+      {
+        "Component": "Component C",
+        "Nozzle Ref": "Nozzle Type C",
+        "D_C_N (mm)": "12.0",
+        "DZ_P_N (mm)": "1233.0",
+        "Intergration Angle": "3.0",
+        "Targeted Washing Preformance": "12.0"
+      }
+    ],
+    "pumps": [
+      {
+        "Pump Category": "Category B",
+        "Number of output": "2",
+        "Pump Name": "AWEKL 123133112 DE",
+        "Number of WC (O1)": "1",
+        "Number of WC (O2)": "2"
+      }
+    ],
+    "circuits": [
+      {
+        "pump_index": 0,
+        "circuit": {
+          "components": [
+            {
+              "id": 832,
+              "type": "pump",
+              "name": "AWEKL 123133112 DE",
+              "position": [
+                450,
+                139
+              ],
+              "connections": 2
+            },
+            {
+              "id": 834,
+              "type": "component",
+              "name": "Component B",
+              "position": [
+                708,
+                107
+              ],
+              "connections": 1
+            },
+            {
+              "id": 836,
+              "type": "component",
+              "name": "Component A",
+              "position": [
+                84,
+                63
+              ],
+              "connections": 1
+            },
+            {
+              "id": 838,
+              "type": "component",
+              "name": "Component C",
+              "position": [
+                72,
+                212
+              ],
+              "connections": 1
+            },
+            {
+              "id": 840,
+              "type": "y_connector",
+              "name": "Y-Connector",
+              "position": [
+                261,
+                135
+              ],
+              "connections": 3
+            }
+          ],
+          "connections": [
+            {
+              "from": 832,
+              "to": 840,
+              "from_name": "AWEKL 123133112 DE",
+              "to_name": "Y-Connector",
+              "parameters": {
+                "diameter": 32.0,
+                "type": "Type B",
+                "length": 12.0,
+                "inclination": "straight",
+                "bend_radius": 0,
+                "ref_number": "PIP-002-B",
+                "supplier": "AquaPipe"
+              }
+            },
+            {
+              "from": 832,
+              "to": 834,
+              "from_name": "AWEKL 123133112 DE",
+              "to_name": "Component B",
+              "parameters": {
+                "diameter": 25.0,
+                "type": "Type B",
+                "length": 12.0,
+                "inclination": "straight",
+                "bend_radius": 0,
+                "ref_number": "PIP-002-B",
+                "supplier": "AquaPipe"
+              }
+            },
+            {
+              "from": 840,
+              "to": 836,
+              "from_name": "Y-Connector",
+              "to_name": "Component A",
+              "parameters": {
+                "diameter": 32.0,
+                "type": "Type B",
+                "length": 12.0,
+                "inclination": "straight",
+                "bend_radius": 0,
+                "ref_number": "PIP-002-B",
+                "supplier": "AquaPipe"
+              }
+            },
+            {
+              "from": 840,
+              "to": 838,
+              "from_name": "Y-Connector",
+              "to_name": "Component C",
+              "parameters": {
+                "diameter": 32.0,
+                "type": "Type B",
+                "length": 12.0,
+                "inclination": "straight",
+                "bend_radius": 0,
+                "ref_number": "PIP-002-B",
+                "supplier": "AquaPipe"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "sequences": {
+      "sequence_configuration": {
+        "tasks": [],
+        "total_duration_seconds": 0,
+        "total_tasks": 0,
+        "connected_components": [
+          {
+            "pump_index": 0,
+            "pump_name": "AWEKL 123133112 DE",
+            "outputs": {
+              "1": [
+                "Component A",
+                "Component C"
+              ],
+              "2": [
+                "Component B"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

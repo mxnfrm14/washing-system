@@ -54,7 +54,7 @@ class App(ctk.CTk):
         self.controller.add_page("washing_components", WashingComponent)
         self.controller.add_page("pumps", Pumps)
         self.controller.add_page("circuits", Circuits)
-        self.controller.add_page("sequence", Sequences)
+        self.controller.add_page("sequences", Sequences)
         self.controller.add_page("results", Results)
         
         # Set up the navigation menu

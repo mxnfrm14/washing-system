@@ -20,7 +20,7 @@ class NavigationMenu(ctk.CTkFrame):
             "washing_components": ("Washing Components", 1),
             "pumps": ("Pumps", 2),
             "circuits": ("Circuits", 3),
-            "sequence": ("Sequence", 4),
+            "sequences": ("Sequences", 4),
             "results": ("Results", 5)
         }
         

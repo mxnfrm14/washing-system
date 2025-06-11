@@ -67,7 +67,7 @@ class Circuits(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("sequence")
+            command=lambda: controller.show_page("sequences")
         )
         self.next_button.pack(side="right")
 
@@ -96,16 +96,20 @@ class Circuits(ctk.CTkFrame):
         import hashlib
         import json
         
-        # Create a simplified version for hashing
+        # Create a simplified version for hashing - include more fields for better change detection
         config_for_hash = {
             'pumps': [
                 {
                     'name': pump.get('name', ''),
-                    'outputs': pump.get('outputs', 0)
+                    'outputs': pump.get('outputs', 0),
+                    'washing_components_per_output': pump.get('washing_components_per_output', {})
                 } for pump in config.get('pumps', [])
             ],
             'washing_components': [
-                comp.get('name', '') if isinstance(comp, dict) else str(comp)
+                {
+                    'name': comp.get('name', '') if isinstance(comp, dict) else str(comp),
+                    'id': comp.get('id', '') if isinstance(comp, dict) else ''
+                }
                 for comp in config.get('washing_components', [])
             ]
         }
@@ -480,7 +484,7 @@ class Circuits(ctk.CTkFrame):
                 "pump_index": i,
                 "circuit": circuit_data
             })
-        print(f"Saving circuit configurations: {circuits_data}")
+        print(f"Saving circuit configurations: {len(circuits_data)} circuits")
         
         # Save to controller using both methods for consistency
         if hasattr(self.controller, 'save_circuit_config'):
@@ -489,6 +493,9 @@ class Circuits(ctk.CTkFrame):
         # Also update config data directly to ensure it's saved
         if hasattr(self.controller, 'update_config_data'):
             self.controller.update_config_data('circuits', circuits_data)
+        
+        # Update saved states to current state
+        self._save_circuit_states()
         
         print("Circuit configurations saved!")
         messagebox.showinfo("Configuration Saved", "Circuit configurations have been saved successfully.")
@@ -520,9 +527,13 @@ class Circuits(ctk.CTkFrame):
         
         # Check if configuration actually changed
         new_hash = self._get_config_hash(new_config)
-        if self.last_config_hash == new_hash:
-            print("Configuration unchanged, skipping refresh")
+        if self.last_config_hash == new_hash and hasattr(self, 'tabs') and self.tabs:
+            print("Configuration unchanged and UI exists, skipping refresh")
             return
+        
+        # Save current circuit states before refresh if they exist
+        if hasattr(self, 'circuit_designers') and self.circuit_designers:
+            self._save_circuit_states()
         
         # Update configuration
         self.config = new_config

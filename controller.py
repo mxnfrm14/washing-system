@@ -66,13 +66,18 @@ class PageController:
                 page.tkraise()
                 
                 # Update the current page
+                old_page = self.current_page
                 self.current_page = page_name
                 
-                # Load configuration for the new page (this will refresh circuits page)
+                # Load configuration for the new page FIRST
                 self.load_page_config(page_name)
                 
-                # Special handling for circuits page - always refresh
+                # Special handling for pages that need refresh AFTER loading config
                 if page_name == "circuits" and hasattr(page, 'refresh_configuration'):
+                    print(f"Calling refresh_configuration for circuits page")
+                    page.refresh_configuration()
+                elif page_name == "sequences" and hasattr(page, 'refresh_configuration'):
+                    print(f"Calling refresh_configuration for {page_name} page")
                     page.refresh_configuration()
                 
                 # Update navigation menu if available
@@ -81,6 +86,8 @@ class PageController:
                         self.navigation_menu.update_navigation_state(page_name)
                     except Exception as e:
                         print(f"Error updating navigation menu: {e}")
+                
+                print(f"Successfully switched from {old_page} to {page_name}")
                 
             except Exception as e:
                 print(f"Error showing page {page_name}: {e}")
@@ -148,6 +155,7 @@ class PageController:
                     "pumps": self.config_data["pumps"],
                     "circuits": self.config_data["circuits"]
                 }
+                print(f"Loading configuration for {page_name}: circuits={len(self.config_data.get('circuits', []))} pumps={len(self.config_data.get('pumps', []))}")
                 if hasattr(page, 'load_configuration'):
                     page.load_configuration(sequence_config)
                     
@@ -216,4 +224,16 @@ class PageController:
         print(f"Saved circuit configuration to controller: {len(circuits_data)} circuits")
         
         # Also trigger a full save when circuits are saved via the save button
+        self.save_whole_configuration()
+    
+    def save_sequence_config(self, sequence_data):
+        """Save sequence configuration data"""
+        self.config_data["sequences"] = sequence_data
+        tasks_count = 0
+        if isinstance(sequence_data, dict) and "sequence_configuration" in sequence_data:
+            tasks_count = sequence_data["sequence_configuration"].get("total_tasks", 0)
+        
+        print(f"Saved sequence configuration to controller: {tasks_count} tasks")
+        
+        # Trigger a full save when sequences are saved via the save button
         self.save_whole_configuration()
