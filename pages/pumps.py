@@ -3,6 +3,7 @@ from components.custom_button import CustomButton
 from tkinter import messagebox
 from components.custom_table import CustomTable
 from components.pump_config_dialog import PumpConfigDialog
+import uuid
 
 class Pumps(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -148,11 +149,20 @@ class Pumps(ctk.CTkFrame):
     
     def add_pump_from_dialog(self, pump_data):
         """Add a pump from the dialog data"""
+        # Add unique ID if not present
+        if 'id' not in pump_data:
+            pump_data['id'] = f"pump_{uuid.uuid4().hex[:8]}"
         self.table.add_row(pump_data)
         print(f"Added pump: {pump_data}")
     
     def update_pump_from_dialog(self, index, pump_data):
         """Update a pump from the dialog data"""
+        # Preserve existing ID if updating
+        existing_data = self.table.get_row_data(index)
+        if existing_data and 'id' in existing_data:
+            pump_data['id'] = existing_data['id']
+        elif 'id' not in pump_data:
+            pump_data['id'] = f"pump_{uuid.uuid4().hex[:8]}"
         self.table.update_row(index, pump_data)
         print(f"Updated pump at index {index}: {pump_data}")
     
@@ -185,6 +195,9 @@ class Pumps(ctk.CTkFrame):
                 self.table.clear_all_data()
                 # Load new data
                 for pump in pumps:
+                    # Ensure each pump has an ID
+                    if 'id' not in pump:
+                        pump['id'] = f"pump_{uuid.uuid4().hex[:8]}"
                     self.table.add_row(pump)
         except Exception as e:
             print(f"Error loading pumps configuration: {e}")

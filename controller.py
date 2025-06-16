@@ -2,6 +2,7 @@ import customtkinter as ctk
 import json
 import os
 from datetime import datetime
+import uuid
 
 class PageController:
     def __init__(self, container, app):
@@ -103,11 +104,21 @@ class PageController:
                     
             elif self.current_page == "washing_components":
                 if hasattr(page, 'get_configuration'):
-                    self.config_data["washing_components"] = page.get_configuration()
+                    components = page.get_configuration()
+                    # Ensure each component has an ID
+                    for component in components:
+                        if isinstance(component, dict) and 'id' not in component:
+                            component['id'] = f"component_{uuid.uuid4().hex[:8]}"
+                    self.config_data["washing_components"] = components
                     
             elif self.current_page == "pumps":
                 if hasattr(page, 'get_configuration'):
-                    self.config_data["pumps"] = page.get_configuration()
+                    pumps = page.get_configuration()
+                    # Ensure each pump has an ID
+                    for pump in pumps:
+                        if isinstance(pump, dict) and 'id' not in pump:
+                            pump['id'] = f"pump_{uuid.uuid4().hex[:8]}"
+                    self.config_data["pumps"] = pumps
                     
             elif self.current_page == "circuits":
                 if hasattr(page, 'get_configuration'):

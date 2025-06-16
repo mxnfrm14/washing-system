@@ -4,6 +4,7 @@ from components.custom_button import CustomButton
 from PIL import Image
 from components.custom_table import CustomTable
 from components.component_config_dialog import ComponentConfigDialog
+import uuid
 
 class WashingComponent(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -157,11 +158,20 @@ class WashingComponent(ctk.CTkFrame):
     
     def add_component_from_dialog(self, component_data):
         """Add a component from the dialog data"""
+        # Add unique ID if not present
+        if 'id' not in component_data:
+            component_data['id'] = f"component_{uuid.uuid4().hex[:8]}"
         self.table.add_row(component_data)
         print(f"Added component: {component_data}")
     
     def update_component_from_dialog(self, index, component_data):
         """Update a component from the dialog data"""
+        # Preserve existing ID if updating
+        existing_data = self.table.get_row_data(index)
+        if existing_data and 'id' in existing_data:
+            component_data['id'] = existing_data['id']
+        elif 'id' not in component_data:
+            component_data['id'] = f"component_{uuid.uuid4().hex[:8]}"
         self.table.update_row(index, component_data)
         print(f"Updated component at index {index}: {component_data}")
     
@@ -185,6 +195,9 @@ class WashingComponent(ctk.CTkFrame):
                 self.table.clear_all_data()
                 # Load new data
                 for component in components:
+                    # Ensure each component has an ID
+                    if 'id' not in component:
+                        component['id'] = f"component_{uuid.uuid4().hex[:8]}"
                     self.table.add_row(component)
         except Exception as e:
             print(f"Error loading washing components configuration: {e}")

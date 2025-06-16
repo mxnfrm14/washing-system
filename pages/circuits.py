@@ -6,6 +6,7 @@ import tkinter.messagebox as messagebox
 from components.circuit_designer import CircuitDesigner
 from components.detail_list import DetailList
 from components.mode_selector import ModeSelector
+import uuid
 
 class Circuits(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -178,6 +179,171 @@ class Circuits(ctk.CTkFrame):
             except Exception as e:
                 print(f"Error restoring connection: {e}")
     
+    def _analyze_circuit_connections(self, circuit_data):
+        """Analyze circuit connections to determine component hierarchy"""
+        if not circuit_data or 'components' not in circuit_data or 'connections' not in circuit_data:
+            return {}
+        
+        components = {comp['name']: comp for comp in circuit_data['components']}
+        connections = circuit_data['connections']
+        
+        # Build connection graph
+        connection_graph = {}
+        for conn in connections:
+            from_name = conn['from_name']
+            to_name = conn['to_name']
+            
+            if from_name not in connection_graph:
+                connection_graph[from_name] = []
+            connection_graph[from_name].append(to_name)
+        
+        return connection_graph
+    
+    def _find_pump_outputs(self, components):
+        """Find pump components and their outputs"""
+        pump_outputs = {}
+        for comp_name, comp_data in components.items():
+            if comp_data.get('type') == 'pump':
+                outputs = comp_data.get('max_connections', 1)
+                pump_outputs[comp_name] = list(range(1, outputs + 1))
+        return pump_outputs
+    
+    def _trace_path_from_output(self, start_component, connection_graph, components, visited=None):
+        """Trace the path from a pump output to find all connected components"""
+        if visited is None:
+            visited = set()
+        
+        if start_component in visited:
+            return []
+        
+        visited.add(start_component)
+        path = []
+        
+        # Add current component if it's not a pump
+        if start_component in components:
+            comp_type = components[start_component].get('type', '')
+            if comp_type != 'pump':
+                path.append({
+                    'name': start_component,
+                    'type': comp_type,
+                    'distance': len(visited) - 1
+                })
+        
+        # Follow connections
+        if start_component in connection_graph:
+            for connected_component in connection_graph[start_component]:
+                child_path = self._trace_path_from_output(connected_component, connection_graph, components, visited.copy())
+                for item in child_path:
+                    item['distance'] += 1
+                path.extend(child_path)
+        
+        return path
+    
+    def _get_pump_outputs_ids(self, pump_comp, circuit_data, pump_config):
+        """
+        Return a list of (output_index, to_id) for each output connection from the pump,
+        ordered left-to-right by the x position of the 'to' component.
+        """
+        pump_id = pump_comp.get('id')
+        # Get all direct connections from the pump
+        direct_conns = [conn for conn in circuit_data.get('connections', []) if conn['from'] == pump_id]
+        # Sort connections left-to-right by the x position of the 'to' component if possible
+        components_by_id = {comp['id']: comp for comp in circuit_data['components']}
+        def get_x(conn):
+            comp = components_by_id.get(conn['to'])
+            if comp and isinstance(comp.get('position'), (list, tuple)) and len(comp['position']) > 0:
+                return comp['position'][0]
+            return 0
+        direct_conns_sorted = sorted(direct_conns, key=get_x)
+        # Each connection is a separate output, index starting from 1
+        output_map = []
+        for idx, conn in enumerate(direct_conns_sorted, 1):
+            output_map.append((idx, [conn['to']]))
+        return output_map
+
+    def _follow_output_path(self, start_id, circuit_data, components_by_id, visited=None):
+        """
+        Recursively follow the path from a given id, collecting all reachable 'component' type names.
+        Always explore further through connectors.
+        """
+        if visited is None:
+            visited = set()
+        result = []
+        if start_id in visited:
+            return result
+        visited.add(start_id)
+        comp = components_by_id.get(start_id)
+        if comp:
+            if comp.get('type') == 'component':
+                result.append(comp['name'])
+            # Always continue through connectors and any other node
+            for conn in circuit_data.get('connections', []):
+                if conn['from'] == start_id:
+                    result += self._follow_output_path(conn['to'], circuit_data, components_by_id, visited)
+        return result
+
+    def _generate_circuit_summary(self, circuit_data, pump_config):
+        """Generate a summary of components connected to each pump output using IDs for tracking."""
+        if not circuit_data or 'components' not in circuit_data:
+            return {}
+        
+        components_by_id = {comp['id']: comp for comp in circuit_data['components']}
+        
+        # Find the pump component
+        pump_comp = None
+        for comp in circuit_data['components']:
+            if comp.get('type') == 'pump':
+                pump_comp = comp
+                break
+        if not pump_comp:
+            return {}
+        
+        # Create a mapping of used component IDs to avoid duplicates
+        used_component_ids = set()
+        
+        # For each output, follow its path and collect component IDs and names
+        output_map = {}
+        outputs = self._get_pump_outputs_ids(pump_comp, circuit_data, pump_config)
+        for idx, to_ids in outputs:
+            comp_list = []
+            comp_ids_seen = set()  # Track circuit IDs to avoid duplicates
+            for to_id in to_ids:
+                path_components = self._follow_output_path_with_ids(to_id, circuit_data, components_by_id, visited=set())
+                for comp_info in path_components:
+                    comp_id = comp_info['id']
+                    # Only add if we haven't seen this specific circuit component ID
+                    if comp_id not in comp_ids_seen:
+                        comp_ids_seen.add(comp_id)
+                        # Find the actual component ID from the washing components configuration
+                        actual_component_id = self._get_actual_component_id(comp_info['name'], used_component_ids)
+                        comp_info['actual_id'] = actual_component_id
+                        if actual_component_id:
+                            used_component_ids.add(actual_component_id)
+                        comp_list.append(comp_info)
+            
+            output_map[str(idx)] = comp_list
+        return output_map
+
+    def _get_actual_component_id(self, component_name, used_ids):
+        """Get the actual component ID from the washing components configuration, avoiding already used IDs"""
+        washing_components = self.config.get('washing_components', [])
+        
+        # First, try to find an unused component with the matching name
+        for component in washing_components:
+            if (component.get('name') == component_name and 
+                component.get('id') not in used_ids):
+                return component.get('id')
+        
+        # If all components with this name are used, return the first match with a warning
+        for component in washing_components:
+            if component.get('name') == component_name:
+                print(f"Warning: Component '{component_name}' (ID: {component.get('id')}) is being reused in circuit")
+                return component.get('id')
+        
+        print(f"Warning: No configuration found for component '{component_name}'")
+        return None
+
+
     def _create_circuit_content(self):
         """Create or recreate the circuit content based on current configuration"""
         # Check if we need to refresh based on configuration changes
@@ -380,12 +546,14 @@ class Circuits(ctk.CTkFrame):
                         if isinstance(pump, dict):
                             # Convert pump data to expected format
                             pump_name = pump.get('Pump Name', 'Unknown Pump')
+                            # Use existing ID or generate new one
+                            pump_id = pump.get('id', f"pump_{uuid.uuid4().hex[:8]}")
                             pump_config = {
-                                "id": f"pump_{pump_index}",  # Add unique ID
+                                "id": pump_id,
                                 "name": pump_name,
-                                "display_name": f"{pump_name} ({pump_index + 1})" if pump_name else f"Pump {pump_index + 1}",  # Unique display name
+                                "display_name": f"{pump_name} ({pump_index + 1})" if pump_name else f"Pump {pump_index + 1}",
                                 "outputs": int(pump.get('Number of output', 1)),
-                                "max_connections": int(pump.get('Number of output', 1)),  # Use outputs as max connections
+                                "max_connections": int(pump.get('Number of output', 1)),
                                 "washing_components_per_output": {}
                             }
                             
@@ -397,7 +565,7 @@ class Circuits(ctk.CTkFrame):
                                 if wc_key in pump:
                                     pump_config["washing_components_per_output"][i] = int(pump.get(wc_key, 0))
                                 else:
-                                    pump_config["washing_components_per_output"][i] = 0  # Default to 0 if not found
+                                    pump_config["washing_components_per_output"][i] = 0
                             
                             config["pumps"].append(pump_config)
                 
@@ -406,19 +574,21 @@ class Circuits(ctk.CTkFrame):
                     for comp_index, component in enumerate(washing_components):
                         if isinstance(component, dict):
                             comp_name = component.get('Component', 'Unknown Component')
+                            # Use existing ID or generate new one
+                            comp_id = component.get('id', f"component_{uuid.uuid4().hex[:8]}")
                             comp_config = {
-                                "id": f"component_{comp_index}",  # Add unique ID
+                                "id": comp_id,
                                 "name": comp_name,
-                                "display_name": f"{comp_name} ({comp_index + 1})" if comp_name else f"Component {comp_index + 1}",  # Unique display name
+                                "display_name": f"{comp_name} ({comp_index + 1})" if comp_name else f"Component {comp_index + 1}",
                                 "type": "component"
                             }
                             config["washing_components"].append(comp_config)
                         elif isinstance(component, str):
                             # Handle string format
                             comp_config = {
-                                "id": f"component_{comp_index}",  # Add unique ID
+                                "id": f"component_{uuid.uuid4().hex[:8]}",
                                 "name": component,
-                                "display_name": f"{component} ({comp_index + 1})" if component else f"Component {comp_index + 1}",  # Unique display name
+                                "display_name": f"{component} ({comp_index + 1})" if component else f"Component {comp_index + 1}",
                                 "type": "component"
                             }
                             config["washing_components"].append(comp_config)
@@ -438,41 +608,32 @@ class Circuits(ctk.CTkFrame):
             "pumps": [],
             "washing_components": []
         }
-    
-    def _on_component_selected(self, component, tab_index):
-        """Handle component selection from detail list"""
-        if 0 <= tab_index < len(self.circuit_designers):
-            designer = self.circuit_designers[tab_index]
-            designer.set_selected_component(component)
-            # Automatically switch to place mode
-            if hasattr(designer, 'mode_selector'):
-                mode_data = {
-                    "mode": "place",
-                    "component": component
-                }
-                designer.set_mode(mode_data)
-    
-    def update_appearance(self):
-        """Update any appearance-dependent elements"""
-        # Update detail lists
-        for detail_list in self.detail_lists:
-            if hasattr(detail_list, 'update_appearance'):
-                try:
-                    detail_list.update_appearance()
-                except Exception as e:
-                    print(f"Error updating detail list appearance: {e}")
+
+    def _follow_output_path_with_ids(self, start_id, circuit_data, components_by_id, visited=None):
+        """Recursively follow the path from a given id, collecting component info with IDs."""
+        if visited is None:
+            visited = set()
+        result = []
+        if start_id in visited:
+            return result
+        visited.add(start_id)
         
-        # Update circuit designers
-        for designer in self.circuit_designers:
-            if hasattr(designer, 'update_appearance'):
-                try:
-                    designer.update_appearance()
-                except Exception as e:
-                    print(f"Error updating circuit designer appearance: {e}")
+        comp = components_by_id.get(start_id)
+        if comp and comp.get('type') == 'component':
+            result.append({
+                'id': comp['id'],
+                'name': comp['name'],
+                'type': comp['type']
+            })
+        
+        # Follow all outgoing connections
+        for conn in circuit_data.get('connections', []):
+            if conn['from'] == start_id:
+                result += self._follow_output_path_with_ids(conn['to'], circuit_data, components_by_id, visited)
+        return result
 
     def save_configuration(self):
         """Save the configuration via the controller"""
-        # Collect circuit data from all designers
         circuits_data = []
         for i, designer in enumerate(self.circuit_designers):
             circuit_data = designer.get_circuit_data()
@@ -480,25 +641,23 @@ class Circuits(ctk.CTkFrame):
                 "pump_index": i,
                 "circuit": circuit_data
             })
-        print(f"Saving circuit configurations: {circuits_data}")
-        
-        # Save to controller using both methods for consistency
+        connection_summary = self._generate_overall_summary()
+        enhanced_circuits_data = {
+            'circuits': circuits_data,
+            'connection_summary': connection_summary
+        }
+        print(f"Saving circuit configurations: {len(circuits_data)} circuits")
         if hasattr(self.controller, 'save_circuit_config'):
-            self.controller.save_circuit_config(circuits_data)
-        
-        # Also update config data directly to ensure it's saved
+            self.controller.save_circuit_config(enhanced_circuits_data)
         if hasattr(self.controller, 'update_config_data'):
-            self.controller.update_config_data('circuits', circuits_data)
-        
+            self.controller.update_config_data('circuits', enhanced_circuits_data)
         print("Circuit configurations saved!")
         messagebox.showinfo("Configuration Saved", "Circuit configurations have been saved successfully.")
-    
+
     def get_configuration(self):
         """Get current circuit configuration for controller saving"""
         if not hasattr(self, 'circuit_designers') or not self.circuit_designers:
             return []
-        
-        # Collect circuit data from all designers
         circuits_data = []
         for i, designer in enumerate(self.circuit_designers):
             if designer and hasattr(designer, 'get_circuit_data'):
@@ -507,9 +666,13 @@ class Circuits(ctk.CTkFrame):
                     "pump_index": i,
                     "circuit": circuit_data
                 })
-        
-        print(f"Returning circuit configuration: {len(circuits_data)} circuits")
-        return circuits_data
+        connection_summary = self._generate_overall_summary()
+        enhanced_config = {
+            'circuits': circuits_data,
+            'connection_summary': connection_summary
+        }
+        print(f"Returning circuit configuration: {len(circuits_data)} circuits with connection summary")
+        return enhanced_config
     
     def refresh_configuration(self):
         """Refresh the page with updated configuration from controller"""
@@ -536,3 +699,41 @@ class Circuits(ctk.CTkFrame):
         """Load configuration data and refresh the page"""
         print("Loading configuration for circuits page...")
         self.refresh_configuration()
+    
+    def _generate_overall_summary(self):
+        """Generate overall summary with per-output component mapping using IDs."""
+        connection_summary = []
+        for i, (pump_config, designer) in enumerate(zip(self.config['pumps'], self.circuit_designers)):
+            if not designer or not hasattr(designer, 'get_circuit_data'):
+                pump_summary = {
+                    "pump_index": i,
+                    "pump_id": pump_config.get('id', f'pump_{i}'),
+                    "pump_name": pump_config.get('display_name', f'Pump {i+1}'),
+                    "outputs": {}
+                }
+                connection_summary.append(pump_summary)
+                continue
+            
+            circuit_data = designer.get_circuit_data()
+            outputs = self._generate_circuit_summary(circuit_data, pump_config)
+            pump_summary = {
+                "pump_index": i,
+                "pump_id": pump_config.get('id', f'pump_{i}'),
+                "pump_name": pump_config.get('display_name', f'Pump {i+1}'),
+                "outputs": outputs
+            }
+            connection_summary.append(pump_summary)
+        return connection_summary
+    
+    def _on_component_selected(self, component, tab_index):
+        """Handle component selection from detail list"""
+        if 0 <= tab_index < len(self.circuit_designers):
+            designer = self.circuit_designers[tab_index]
+            designer.set_selected_component(component)
+            # Automatically switch to place mode
+            if hasattr(designer, 'mode_selector'):
+                mode_data = {
+                    "mode": "place",
+                    "component": component
+                }
+                designer.set_mode(mode_data)
