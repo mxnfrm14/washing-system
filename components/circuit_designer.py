@@ -349,7 +349,7 @@ class CircuitDesigner(ctk.CTkFrame):
         return None
     
     def place_component(self, x, y, component):
-        """Place a component on the canvas"""
+        """Place a component on the canvas with boundary constraints"""
         # Determine component type
         comp_type = None
         
@@ -381,6 +381,25 @@ class CircuitDesigner(ctk.CTkFrame):
         if comp_type not in self.component_properties:
             print(f"Component type '{comp_type}' not defined in properties")
             return
+        
+        # Get canvas dimensions
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # Get component size for boundary calculation
+        comp_size = self.component_properties.get(comp_type, {}).get('size', (30, 30))
+        half_width = comp_size[0] // 2
+        half_height = comp_size[1] // 2
+        
+        # Constrain position within canvas boundaries
+        min_x = half_width + 5  # 5px padding from edge
+        max_x = canvas_width - half_width - 5
+        min_y = half_height + 5
+        max_y = canvas_height - half_height - 60  # Extra space for label
+        
+        # Apply constraints to placement position
+        x = max(min_x, min(x, max_x))
+        y = max(min_y, min(y, max_y))
         
         # Get icon
         mode = ctk.get_appearance_mode().lower()
@@ -894,7 +913,7 @@ class CircuitDesigner(ctk.CTkFrame):
         # self.canvas.config(cursor="grab")
     
     def perform_drag(self, x, y):
-        """Perform drag operation"""
+        """Perform drag operation with boundary constraints"""
         item_id = self._drag_data["item"]
         if not item_id or item_id not in self.placed_items:
             return
@@ -903,26 +922,48 @@ class CircuitDesigner(ctk.CTkFrame):
         new_x = x - self._drag_data["offset_x"]
         new_y = y - self._drag_data["offset_y"]
         
+        # Get canvas dimensions
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # Get component size for boundary calculation
+        comp_type = self.placed_items[item_id]['type']
+        comp_size = self.component_properties.get(comp_type, {}).get('size', (30, 30))
+        half_width = comp_size[0] // 2
+        half_height = comp_size[1] // 2
+        
+        # Constrain position within canvas boundaries
+        min_x = half_width + 5  # 5px padding from edge
+        max_x = canvas_width - half_width - 5
+        min_y = half_height + 5
+        max_y = canvas_height - half_height - 60  # Extra space for label
+        
+        # Apply constraints
+        new_x = max(min_x, min(new_x, max_x))
+        new_y = max(min_y, min(new_y, max_y))
+        
         # Update position
         old_x, old_y = self.placed_items[item_id]['coords']
         dx = new_x - old_x
         dy = new_y - old_y
         
-        # Move component
-        self.canvas.move(item_id, dx, dy)
-        
-        # Move label
-        label_id = self.placed_items[item_id]['label_id']
-        self.canvas.move(label_id, dx, dy)
-        
-        # Update stored position
-        self.placed_items[item_id]['coords'] = (new_x, new_y)
-        
-        # Update connections
-        self.update_connections_for_item(item_id)
-        
-        # Keep reset button on top
-        self.canvas.tag_raise("reset_button")
+        # Only move if there's actual displacement
+        if dx != 0 or dy != 0:
+            # Move component
+            self.canvas.move(item_id, dx, dy)
+            
+            # Move label
+            label_id = self.placed_items[item_id]['label_id']
+            self.canvas.move(label_id, dx, dy)
+            
+            # Update stored position
+            self.placed_items[item_id]['coords'] = (new_x, new_y)
+            
+            # Update connections
+            self.update_connections_for_item(item_id)
+            
+            # Keep reset button on top
+            self.canvas.tag_raise("reset_button")
     
     def end_drag(self):
         """End drag operation"""
