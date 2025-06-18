@@ -24,7 +24,7 @@ class Sequences(ctk.CTkFrame):
         self.title_label = ctk.CTkLabel(
             self.top_frame, 
             text="Configuration of sequences", 
-            font=controller.fonts.get("title", None), 
+            font=self.controller.fonts.get("title", None), 
             anchor="w"
         )
         self.title_label.pack(side="left")
@@ -33,7 +33,7 @@ class Sequences(ctk.CTkFrame):
         self.save_button = CustomButton(
             self.top_frame,
             text="Save configuration",
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
@@ -55,11 +55,11 @@ class Sequences(ctk.CTkFrame):
         self.next_button = CustomButton(
             self.bottom_frame,
             text="Next",
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("results")
+            command=lambda: self.controller.show_page("results")
         )
         self.next_button.pack(side="right")
 
@@ -67,11 +67,11 @@ class Sequences(ctk.CTkFrame):
         self.back_button = CustomButton(
             self.bottom_frame,
             text="Back",
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             icon_path="assets/icons/back.png",
             icon_side="left",
             outlined=True,
-            command=lambda: controller.show_page("circuits")
+            command=lambda: self.controller.show_page("circuits")
         )
         self.back_button.pack(side="left")
 
@@ -109,8 +109,8 @@ class Sequences(ctk.CTkFrame):
         # Header labels
         task_header = ctk.CTkLabel(
             self.header_frame, 
-            text="Task", 
-            font=controller.fonts.get("default", None),
+            text="Component", 
+            font=self.controller.fonts.get("default", None),
             text_color="#0D0D0D",
             anchor="n"
         )
@@ -119,7 +119,7 @@ class Sequences(ctk.CTkFrame):
         duration_header = ctk.CTkLabel(
             self.header_frame, 
             text="Duration", 
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             text_color="#0D0D0D",
             anchor="n"
         )
@@ -128,7 +128,7 @@ class Sequences(ctk.CTkFrame):
         priority_header = ctk.CTkLabel(
             self.header_frame, 
             text="Priority", 
-            font=controller.fonts.get("default", None), 
+            font=self.controller.fonts.get("default", None), 
             text_color="#0D0D0D",
             anchor="n"
         )
@@ -177,7 +177,7 @@ class Sequences(ctk.CTkFrame):
         self.update_button = CustomButton(
             self.button_container_frame,
             text="Update",
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             icon_path="assets/icons/refresh.png",
             icon_side="left",
             outlined=False,
@@ -188,7 +188,7 @@ class Sequences(ctk.CTkFrame):
         self.clear_button = CustomButton(
             self.button_container_frame,
             text="Clear All",
-            font=controller.fonts.get("default", None),
+            font=self.controller.fonts.get("default", None),
             icon_path="assets/icons/trash.png",
             icon_side="left",
             outlined=False  ,
@@ -199,7 +199,7 @@ class Sequences(ctk.CTkFrame):
         # Create sequence visualizer
         self.sequence_visualizer = SequenceVisualizer(
             self.content_frame,
-            controller,
+            self.controller,
             width=600,
             height=300
         )

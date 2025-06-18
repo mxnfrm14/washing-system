@@ -124,7 +124,7 @@ class PageController:
                 if hasattr(page, 'get_configuration'):
                     self.config_data["circuits"] = page.get_configuration()
                     
-            elif self.current_page == "sequences":
+            elif self.current_page == "sequence":
                 if hasattr(page, 'get_configuration'):
                     self.config_data["sequences"] = page.get_configuration()
                     
@@ -151,7 +151,7 @@ class PageController:
                 if hasattr(page, 'load_configuration'):
                     page.load_configuration(circuit_config)
                     
-            elif page_name == "sequences":
+            elif page_name == "sequence":
                 # Sequences page needs data from previous pages
                 sequence_config = {
                     "general_settings": self.config_data["general_settings"],
