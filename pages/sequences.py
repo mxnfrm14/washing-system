@@ -203,7 +203,7 @@ class Sequences(ctk.CTkFrame):
             width=600,
             height=300
         )
-        self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0), pady=(0, 20))
+        self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0))
 
     def create_task_row(self, task_name, initial_priority, row_num):
         """Create a row with task name and priority selector"""

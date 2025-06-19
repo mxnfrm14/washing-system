@@ -24,7 +24,7 @@ class SequenceVisualizer(ctk.CTkFrame):
         self.name_column_width = 150
         self.bar_height = 25
         self.spacing = 10
-        self.y_start = 40
+        self.y_start = 10
         self.padding = 20
         
         self._create_ui()
@@ -39,7 +39,7 @@ class SequenceVisualizer(ctk.CTkFrame):
             font=self.controller.fonts.get("subtitle", None) if hasattr(self.controller, 'fonts') else None,
             anchor="center"
         )
-        self.title_label.pack(pady=(10, 5))
+        self.title_label.pack(pady=(0, 5))
         
         # Canvas frame with border
         self.canvas_frame = ctk.CTkFrame(self, corner_radius=8)
@@ -51,9 +51,9 @@ class SequenceVisualizer(ctk.CTkFrame):
             bg="white",
             highlightthickness=0,
             width=self.width - 40,
-            height=self.height - 80
+            height=self.height - 40
         )
-        self.canvas.pack(fill="both", expand=True, padx=5, pady=5)
+        self.canvas.pack(fill="both", expand=True)
         
         # Total duration label
         self.duration_label = ctk.CTkLabel(
@@ -62,7 +62,7 @@ class SequenceVisualizer(ctk.CTkFrame):
             font=self.controller.fonts.get("default", None) if hasattr(self.controller, 'fonts') else None,
             anchor="center"
         )
-        self.duration_label.pack(pady=(5, 10))
+        self.duration_label.pack(pady=(5, 0))
         
         # Initial empty state
         self._draw_empty_state()
@@ -77,7 +77,7 @@ class SequenceVisualizer(ctk.CTkFrame):
         if canvas_width <= 1:
             canvas_width = self.width - 40
         if canvas_height <= 1:
-            canvas_height = self.height - 80
+            canvas_height = self.height - 40
         
         self.canvas.create_text(
             canvas_width // 2, canvas_height // 2,
@@ -117,7 +117,7 @@ class SequenceVisualizer(ctk.CTkFrame):
         if canvas_width <= 1:
             canvas_width = self.width - 40
         if canvas_height <= 1:
-            canvas_height = self.height - 80
+            canvas_height = self.height - 40
         
         # Process and sort tasks
         processed_tasks = self._process_tasks()
