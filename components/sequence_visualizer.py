@@ -41,11 +41,11 @@ class SequenceVisualizer(ctk.CTkFrame):
         )
         self.title_label.pack(pady=(0, 5))
         
-        # Canvas frame with border
+        # Canvas frame with border and scrollbars
         self.canvas_frame = ctk.CTkFrame(self, corner_radius=8)
         self.canvas_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
-        # Create canvas
+        # Create canvas with scrollbars
         self.canvas = tk.Canvas(
             self.canvas_frame,
             bg="white",
@@ -53,7 +53,16 @@ class SequenceVisualizer(ctk.CTkFrame):
             width=self.width - 40,
             height=self.height - 40
         )
-        self.canvas.pack(fill="both", expand=True)
+        
+        # Add scrollbars
+        self.v_scrollbar = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
+        self.h_scrollbar = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
+        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+        
+        # Pack scrollbars and canvas
+        self.v_scrollbar.pack(side="right", fill="y")
+        self.h_scrollbar.pack(side="bottom", fill="x")
+        self.canvas.pack(side="left", fill="both", expand=True)
         
         # Total duration label
         self.duration_label = ctk.CTkLabel(
@@ -109,22 +118,17 @@ class SequenceVisualizer(ctk.CTkFrame):
             self._draw_empty_state()
             return
         
-        # Get canvas dimensions
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-        
-        # If canvas isn't mapped yet, use default values
-        if canvas_width <= 1:
-            canvas_width = self.width - 40
-        if canvas_height <= 1:
-            canvas_height = self.height - 40
-        
         # Process and sort tasks
         processed_tasks = self._process_tasks()
         
         if not processed_tasks:
             self._draw_empty_state()
             return
+        
+        # Get canvas dimensions
+        canvas_width = self.canvas.winfo_width()
+        if canvas_width <= 1:
+            canvas_width = self.width - 40
         
         # Calculate dimensions
         graph_width = canvas_width - self.name_column_width - (self.padding * 2)
@@ -137,31 +141,27 @@ class SequenceVisualizer(ctk.CTkFrame):
         # Calculate time scale
         time_scale = graph_width / total_duration if total_duration > 0 else 1
         
+        # Calculate canvas scroll region for all tasks
+        content_height = len(processed_tasks) * (self.bar_height + self.spacing) + 80
+        content_width = self.name_column_width + graph_width + self.padding * 2 + 50
+        self.canvas.configure(scrollregion=(0, 0, content_width, content_height))
+        
         # Calculate starting positions
         x_start = self.name_column_width + self.padding
         current_time = 0
         
-        # Draw tasks
+        # Draw all tasks
         for i, task in enumerate(processed_tasks):
             y = self.y_start + i * (self.bar_height + self.spacing)
-            
-            # Skip if would be drawn outside canvas
-            if y + self.bar_height > canvas_height - 50:
-                break
-            
             self._draw_task(task, x_start, y, current_time, time_scale)
             current_time += task['duration_seconds']
         
         # Draw time axis
-        self._draw_time_axis(x_start, processed_tasks, time_scale, canvas_height)
+        axis_y = self.y_start + len(processed_tasks) * (self.bar_height + self.spacing) + 20
+        self._draw_time_axis(x_start, processed_tasks, time_scale, axis_y)
         
-        # Update duration label with appropriate unit
-        if total_duration < 1:
-            duration_text = f"Total washing duration: {total_duration * 1000:.1f} ms"
-        else:
-            duration_text = f"Total washing duration: {total_duration:.1f} sec"
-        
-        self.duration_label.configure(text=duration_text)
+        # Update duration label
+        self._update_duration_label(processed_tasks)
     
     def _process_tasks(self):
         """Process and sort tasks by priority and convert units to seconds"""
@@ -231,8 +231,8 @@ class SequenceVisualizer(ctk.CTkFrame):
             width=1
         )
         
-        # Draw duration text inside bar (if bar is wide enough)
-        if bar_length > 60:  # Only show text if bar is wide enough
+        # Draw duration text inside bar if there's enough space
+        if bar_length > 60:
             duration_text = f"{task['duration']:.1f}{task['unit']}"
             self.canvas.create_text(
                 x + bar_length / 2, y + self.bar_height / 2,
@@ -252,13 +252,24 @@ class SequenceVisualizer(ctk.CTkFrame):
             anchor="w"
         )
     
-    def _draw_time_axis(self, x_start, tasks, time_scale, canvas_height):
-        """Draw the time axis at the bottom"""
+    def _update_duration_label(self, tasks):
+        """Update duration label"""
+        total_duration = sum(task['duration_seconds'] for task in tasks)
+        
+        # Format duration appropriately
+        if total_duration < 1:
+            duration_text = f"Total washing duration: {total_duration * 1000:.1f} ms"
+        else:
+            duration_text = f"Total washing duration: {total_duration:.1f} sec"
+        
+        self.duration_label.configure(text=duration_text)
+    
+    def _draw_time_axis(self, x_start, tasks, time_scale, axis_y):
+        """Draw the time axis"""
         if not tasks:
             return
             
         total_duration = sum(task['duration_seconds'] for task in tasks)
-        axis_y = canvas_height - 30
         
         # Draw main axis line
         self.canvas.create_line(
