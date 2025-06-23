@@ -72,8 +72,11 @@ class PageController:
                 # Load configuration for the new page (this will refresh circuits page)
                 self.load_page_config(page_name)
                 
-                # Special handling for circuits page - always refresh
+                # Special handling for pages that need refreshing
                 if page_name == "circuits" and hasattr(page, 'refresh_configuration'):
+                    page.refresh_configuration()
+
+                if page_name == "sequence" and hasattr(page, 'refresh_configuration'):
                     page.refresh_configuration()
                 
                 # Update navigation menu if available
@@ -178,7 +181,6 @@ class PageController:
             
             # Add metadata
             config_with_metadata = {
-                "version": "1.0",
                 "timestamp": str(datetime.now()),
                 "configuration": self.config_data
             }

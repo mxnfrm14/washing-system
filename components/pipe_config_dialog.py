@@ -50,8 +50,8 @@ class PipeConfigDialog(ctk.CTkToplevel):
         self.update_appearance()
         
         # Focus on first input
-        self.diameter_dropdown.focus()
-    
+        self.diameter_entry.focus()
+
     def _create_ui(self):
         """Create the dialog UI"""
         # Main container
@@ -89,7 +89,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
         # Diameter
         self._create_field(
             row, "Diameter (mm)",
-            self._create_diameter_dropdown()
+            self._create_diameter_entry()
         )
         row += 1
         
@@ -166,21 +166,18 @@ class PipeConfigDialog(ctk.CTkToplevel):
         if "Bend Radius" in label_text:
             self.bend_radius_label = label
     
-    def _create_diameter_dropdown(self):
-        """Create diameter dropdown field"""
-        self.diameter_var = ctk.StringVar(value="Select diameter")
-        # For now, use random values - later to be replaced with database values
-        diameter_options = ["25", "32", "40", "50", "65", "80", "100", "125", "150", "200"]
-        dropdown = ctk.CTkOptionMenu(
+    def _create_diameter_entry(self):
+        """Create diameter entry field (replaces dropdown)"""
+        self.diameter_var = ctk.StringVar()
+        entry = ctk.CTkEntry(
             self.form_frame,
-            variable=self.diameter_var,
-            values=diameter_options,
+            textvariable=self.diameter_var,
+            placeholder_text="Enter diameter",
             font=self.controller.fonts.get("default", None),
-            dropdown_font=self.controller.fonts.get("default", None),
             width=250
         )
-        self.diameter_dropdown = dropdown
-        return dropdown
+        self.diameter_entry = entry
+        return entry
     
     def _create_type_dropdown(self):
         """Create pipe type dropdown"""
@@ -373,11 +370,8 @@ class PipeConfigDialog(ctk.CTkToplevel):
         
         # Set values from saved data
         diameter_str = str(params.get('diameter', ''))
-        if diameter_str in self.diameter_dropdown._values:
-            self.diameter_var.set(diameter_str)
-        else:
-            self.diameter_var.set("Select diameter")  # Default if value not in list
-            
+        self.diameter_var.set(diameter_str)
+        
         self.type_var.set(params.get('type', 'Placeholder'))
         self._on_type_change(params.get('type', ''))
         
@@ -414,17 +408,17 @@ class PipeConfigDialog(ctk.CTkToplevel):
     def save(self):
         """Save the pipe configuration"""
         # Validate inputs
-        if self.diameter_var.get() == "Select diameter":
-            self._show_error("Please select a diameter")
+        if not self.diameter_var.get():
+            self._show_error("Please enter a diameter")
             return
-            
+        
         try:
             diameter = float(self.diameter_var.get())
             if diameter <= 0:
                 self._show_error("Diameter must be positive")
                 return
         except ValueError:
-            self._show_error("Please select a valid diameter")
+            self._show_error("Please enter a valid diameter")
             return
         
         if self.type_var.get() == "Placeholder":

@@ -11,6 +11,20 @@ class Sequences(ctk.CTkFrame):
         self.controller = controller
         ctk.set_default_color_theme("theme.json")
 
+        # Track configuration hash to detect changes
+        self.last_config_hash = None
+        
+        # Initialize task rows list and pump-output mapping first
+        self.task_rows = []
+        self.pump_output_mapping = {}
+        self.component_to_pump_output = {}
+        
+        # Flag to track if UI is fully initialized
+        self.ui_initialized = False
+
+        # Add flag to prevent recursive priority changes
+        self.is_applying_constraints = False
+
         # Create main container for better layout control
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True)
@@ -75,203 +89,571 @@ class Sequences(ctk.CTkFrame):
         )
         self.back_button.pack(side="left")
 
-        # ========================== Content Area ==========================
-        # Content frame for the main content
-        self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.content_frame.pack(fill="both", expand=True, padx=70, pady=30)
+        # Create UI components but don't load configuration yet
+        self.create_ui_components()
+    
+    def create_ui_components(self):
+        """Create all UI components - can be called to refresh the UI"""
+        try:
+            # Clear any existing UI components if they exist
+            if hasattr(self, 'content_frame') and self.content_frame:
+                for widget in self.content_frame.winfo_children():
+                    widget.destroy()
+                self.content_frame.destroy()
+            
+            # Reset UI initialization flag
+            self.ui_initialized = False
+            
+            # ========================== Content Area ==========================
+            # Content frame for the main content
+            self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+            self.content_frame.pack(fill="both", expand=True, padx=70, pady=30)
+    
+            # Configure grid for content frame
+            self.content_frame.grid_rowconfigure(0, weight=1)
+            self.content_frame.grid_rowconfigure(1, weight=0)
+            self.content_frame.grid_columnconfigure(0, weight=0)
+            self.content_frame.grid_columnconfigure(1, weight=1)
+    
+            # ========================== SETUP SEQUENCE ==========================
+            # Outer container frame for form and update button
+            self.form_container = ctk.CTkFrame(self.content_frame, fg_color="#F8F8F8")
+            self.form_container.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 20))
+            
+            # Configure the form container grid - adding header row
+            self.form_container.grid_rowconfigure(0, weight=0)  # Header row - fixed height
+            self.form_container.grid_rowconfigure(1, weight=1)  # Scrollable area expands
+            self.form_container.grid_rowconfigure(2, weight=0)  # Button row fixed height
+            self.form_container.grid_columnconfigure(0, weight=1)
+            
+            # Header frame for fixed column headers
+            self.header_frame = ctk.CTkFrame(self.form_container, fg_color="transparent", height=50)
+            self.header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+            
+            # Configure grid for header frame to match scrollable content
+            self.header_frame.grid_columnconfigure(0, weight=0, minsize=150)  # Task column
+            self.header_frame.grid_columnconfigure(1, weight=1)               # Duration column
+            self.header_frame.grid_columnconfigure(2, weight=1)               # Priority column
+            
+            # Header labels
+            task_header = ctk.CTkLabel(
+                self.header_frame, 
+                text="Component", 
+                font=self.controller.fonts.get("default", None),
+                text_color="#0D0D0D",
+                anchor="n"
+            )
+            task_header.grid(row=0, column=0, pady=(10, 10), sticky="n")
+            
+            duration_header = ctk.CTkLabel(
+                self.header_frame, 
+                text="Duration", 
+                font=self.controller.fonts.get("default", None),
+                text_color="#0D0D0D",
+                anchor="n"
+            )
+            duration_header.grid(row=0, column=1, pady=(10, 10), sticky="n")
+            
+            priority_header = ctk.CTkLabel(
+                self.header_frame, 
+                text="Priority", 
+                font=self.controller.fonts.get("default", None), 
+                text_color="#0D0D0D",
+                anchor="n"
+            )
+            priority_header.grid(row=0, column=2, pady=(10, 10), sticky="n")
+            
+            # Create scrollable frame for the form content
+            self.form_frame = ctk.CTkScrollableFrame(
+                self.form_container, 
+                fg_color="transparent",
+                width=450,
+                corner_radius=0
+            )
+            self.form_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+            
+            # Configure grid for scrollable form frame
+            self.form_frame.grid_columnconfigure(0, weight=0, minsize=150)  # Left label column
+            self.form_frame.grid_columnconfigure(1, weight=1)               # Left input column start
+            self.form_frame.grid_columnconfigure(2, weight=0)               # Priority column
+            
+            # Update and Clear buttons - placed at bottom of form container, outside scrollable area
+            self.button_container_frame = ctk.CTkFrame(
+                self.form_container, 
+                fg_color="transparent",
+                height=80
+            )
+            self.button_container_frame.grid(row=2, column=0, sticky="ew", pady=(5, 10))
+            
+            # Configure grid for button container
+            self.button_container_frame.grid_columnconfigure(0, weight=1)
+            self.button_container_frame.grid_columnconfigure(1, weight=1)
+            
+            self.update_button = CustomButton(
+                self.button_container_frame,
+                text="Update",
+                font=self.controller.fonts.get("default", None),
+                icon_path="assets/icons/refresh.png",
+                icon_side="left",
+                outlined=False,
+                custom_fg_color="#243783",
+                custom_text_color="#F8F8F8",
+                custom_hover_color="#8995C6",
+                custom_border_color="#243783",
+                command=self.update_sequence,
+            )
+            self.update_button.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="ew")
+            
+            self.clear_button = CustomButton(
+                self.button_container_frame,
+                text="Clear All",
+                font=self.controller.fonts.get("default", None),
+                icon_path="assets/icons/trash.png",
+                icon_side="left",
+                outlined=True,
+                custom_fg_color="#F8F8F8",
+                custom_text_color="#243783",
+                custom_hover_color="#C8C8C8",
+                custom_border_color="#243783",
+                command=self.clear_all_tasks,
+            )
+            self.clear_button.grid(row=0, column=1, padx=(5, 10), pady=10, sticky="ew")
 
-        # Configure grid for content frame
-        self.content_frame.grid_rowconfigure(0, weight=1)
-        self.content_frame.grid_rowconfigure(1, weight=0)
-        self.content_frame.grid_columnconfigure(0, weight=0)
-        self.content_frame.grid_columnconfigure(1, weight=1)
+            # Create sequence visualizer
+            self.sequence_visualizer = SequenceVisualizer(
+                self.content_frame,
+                self.controller,
+                width=600,
+                height=300
+            )
+            self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0))
+            
+            # Mark UI as initialized only after all components are created
+            self.ui_initialized = True
+            print("UI components successfully created and initialized")
+            
+        except Exception as e:
+            print(f"Error creating UI components: {e}")
+            import traceback
+            traceback.print_exc()
+            self.ui_initialized = False  # Make sure flag is reset on error
 
-        # ========================== SETUP SEQUENCE ==========================
-        # Outer container frame for form and update button
-        self.form_container = ctk.CTkFrame(self.content_frame, fg_color="#F8F8F8")
-        self.form_container.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 20))
+    def _get_config_hash(self, config_data):
+        """Generate a hash of the configuration to detect changes"""
+        import hashlib
+        import json
         
-        # Configure the form container grid - adding header row
-        self.form_container.grid_rowconfigure(0, weight=0)  # Header row - fixed height
-        self.form_container.grid_rowconfigure(1, weight=1)  # Scrollable area expands
-        self.form_container.grid_rowconfigure(2, weight=0)  # Button row fixed height
-        self.form_container.grid_columnconfigure(0, weight=1)
+        # Create a simplified version for hashing
+        config_for_hash = {}
         
-        # Header frame for fixed column headers
-        self.header_frame = ctk.CTkFrame(self.form_container, fg_color="transparent", height=50)
-        self.header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        # Include circuit data in the hash
+        if 'circuits' in config_data:
+            circuits = config_data.get('circuits', [])
+            if isinstance(circuits, list):
+                config_for_hash['circuits'] = len(circuits)
+            elif isinstance(circuits, dict) and 'connection_summary' in circuits:
+                config_for_hash['connection_summary'] = len(circuits.get('connection_summary', []))
         
-        # Configure grid for header frame to match scrollable content
-        self.header_frame.grid_columnconfigure(0, weight=0, minsize=150)  # Task column
-        self.header_frame.grid_columnconfigure(1, weight=1)               # Duration column
-        self.header_frame.grid_columnconfigure(2, weight=1)               # Priority column
-        
-        # Header labels
-        task_header = ctk.CTkLabel(
-            self.header_frame, 
-            text="Component", 
-            font=self.controller.fonts.get("default", None),
-            text_color="#0D0D0D",
-            anchor="n"
-        )
-        task_header.grid(row=0, column=0, pady=(10, 10), sticky="n")
-        
-        duration_header = ctk.CTkLabel(
-            self.header_frame, 
-            text="Duration", 
-            font=self.controller.fonts.get("default", None),
-            text_color="#0D0D0D",
-            anchor="n"
-        )
-        duration_header.grid(row=0, column=1, pady=(10, 10), sticky="n")
-        
-        priority_header = ctk.CTkLabel(
-            self.header_frame, 
-            text="Priority", 
-            font=self.controller.fonts.get("default", None), 
-            text_color="#0D0D0D",
-            anchor="n"
-        )
-        priority_header.grid(row=0, column=2, pady=(10, 10), sticky="n")
-        
-        # Create scrollable frame for the form content
-        self.form_frame = ctk.CTkScrollableFrame(
-            self.form_container, 
-            fg_color="transparent",
-            width=450,
-            corner_radius=0
-        )
-        self.form_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        
-        # Configure grid for scrollable form frame
-        self.form_frame.grid_columnconfigure(0, weight=0, minsize=150)  # Left label column
-        self.form_frame.grid_columnconfigure(1, weight=1)               # Left input column start
-        self.form_frame.grid_columnconfigure(2, weight=0)               # Priority column
-        
-        # Initialize task rows list
-        self.task_rows = []
-        
-        # Add initial task rows
-        self.create_task_row("Rinse Component A", "P", 0)
-        self.create_task_row("Clean Surface B", "S", 1)
-        self.create_task_row("Final Wash Cycle", "P", 2)
-        
-        # Add more rows to demonstrate scrolling and add button for dynamic rows
-        for i in range(3, 6):
-            self.create_task_row(f"Task {i+1}", "P" if i % 2 == 0 else "S", i)
-        
+        config_str = json.dumps(config_for_hash, sort_keys=True)
+        return hashlib.md5(config_str.encode()).hexdigest()
 
+    def refresh_configuration(self):
+        """Refresh the page with updated configuration from controller"""
+        try:
+            print("Refreshing sequences page configuration...")
+            
+            # Get updated configuration from controller
+            config_data = self.controller.get_config_data()
+            
+            # Check if configuration actually changed
+            new_hash = self._get_config_hash(config_data)
+            if self.last_config_hash == new_hash:
+                print("Configuration unchanged, skipping refresh")
+                return
+            
+            # Update hash
+            self.last_config_hash = new_hash
+            
+            # If UI isn't initialized or needs refreshing, rebuild it
+            if not self.ui_initialized:
+                self.create_ui_components()
+            
+            # Clear any existing rows
+            self.clear_existing_rows()
+            
+            # Load fresh configuration data
+            self.load_configuration(config_data)
+            
+            print("Sequences page refresh complete")
+            
+        except Exception as e:
+            print(f"Error refreshing sequences page: {e}")
+            import traceback
+            traceback.print_exc()
 
-        # Update and Clear buttons - placed at bottom of form container, outside scrollable area
-        self.button_container_frame = ctk.CTkFrame(
-            self.form_container, 
-            fg_color="transparent",
-            height=80
-        )
-        self.button_container_frame.grid(row=2, column=0, sticky="ew", pady=(5, 10))
-        
-        # Configure grid for button container
-        self.button_container_frame.grid_columnconfigure(0, weight=1)
-        self.button_container_frame.grid_columnconfigure(1, weight=1)
-        
-        self.update_button = CustomButton(
-            self.button_container_frame,
-            text="Update",
-            font=self.controller.fonts.get("default", None),
-            icon_path="assets/icons/refresh.png",
-            icon_side="left",
-            outlined=False,
-            command=self.update_sequence,
-        )
-        self.update_button.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="ew")
-        
-        self.clear_button = CustomButton(
-            self.button_container_frame,
-            text="Clear All",
-            font=self.controller.fonts.get("default", None),
-            icon_path="assets/icons/trash.png",
-            icon_side="left",
-            outlined=False  ,
-            command=self.clear_all_tasks,
-        )
-        self.clear_button.grid(row=0, column=1, padx=(5, 10), pady=10, sticky="ew")
+    def show(self):
+        """Called when the page is shown"""
+        try:
+            print("Sequences page is now active, refreshing...")
+            self.refresh_configuration()
+        except Exception as e:
+            print(f"Error showing sequences page: {e}")
+            import traceback
+            traceback.print_exc()
 
-        # Create sequence visualizer
-        self.sequence_visualizer = SequenceVisualizer(
-            self.content_frame,
-            self.controller,
-            width=600,
-            height=300
-        )
-        self.sequence_visualizer.grid(row=0, column=1, sticky="nsew", padx=(20, 0))
+    def load_configuration(self, config_data=None):
+        """Load configuration data from controller and create task rows"""
+        try:
+            # Make sure UI is initialized before loading configuration
+            if not self.ui_initialized:
+                print("UI not initialized, creating components first")
+                self.create_ui_components()
+                
+                # Add a delay to ensure UI components are fully created
+                self.after(100, lambda: self.load_configuration(config_data))
+                return
+            
+            # Use provided config_data or get from controller
+            if config_data is None:
+                config_data = self.controller.get_config_data()
+            
+            # Safety check - make sure config_data is a dictionary
+            if not isinstance(config_data, dict):
+                print(f"Warning: config_data is not a dictionary, got {type(config_data)}")
+                self.show_warning_message()
+                return
+            
+            # Get circuits data
+            circuits_data = config_data.get("circuits", [])
+            
+            # Handle different formats of circuit data
+            connection_summary = []
+            
+            if isinstance(circuits_data, list):
+                # Direct list format is already the connection summary
+                connection_summary = circuits_data
+                print(f"Using circuits_data directly as connection_summary (list format)")
+            elif isinstance(circuits_data, dict) and "connection_summary" in circuits_data:
+                # Dictionary with connection_summary key
+                connection_summary = circuits_data.get("connection_summary", [])
+                print(f"Using connection_summary from circuits_data dictionary")
+            else:
+                print(f"Warning: Unexpected circuits_data format: {type(circuits_data)}")
+                self.show_warning_message()
+                return
+            
+            # If no circuit configuration, show warning and skip further loading
+            if not connection_summary:
+                self.clear_existing_rows()
+                self.show_warning_message()
+                return
+            
+            # Clear existing task rows
+            self.clear_existing_rows()
+            
+            # Build pump-output mapping
+            self.build_pump_output_mapping(connection_summary)
+            
+            # Create task rows from components - with retry mechanism
+            row_num = 0
+            retry_needed = False
+            
+            for pump_info in connection_summary:
+                # Check if pump_info is a dictionary, skip if not
+                if not isinstance(pump_info, dict):
+                    print(f"Warning: Expected pump_info to be a dictionary, got {type(pump_info)}")
+                    continue
+                    
+                pump_name = pump_info.get("pump_name", "Unknown Pump")
+                outputs = pump_info.get("outputs", {})
+                
+                # Check if outputs is a dictionary
+                if not isinstance(outputs, dict):
+                    print(f"Warning: Expected outputs to be a dictionary, got {type(outputs)}")
+                    continue
+                
+                for output_num, components in outputs.items():
+                    # Skip if components is not a list
+                    if not isinstance(components, list):
+                        print(f"Warning: Expected components to be a list, got {type(components)}")
+                        continue
+                        
+                    for component in components:
+                        # Skip if component is not a dictionary
+                        if not isinstance(component, dict):
+                            print(f"Warning: Expected component to be a dictionary, got {type(component)}")
+                            continue
+                            
+                        component_name = component.get("name", "Unknown Component")
+                        component_id = component.get("actual_id", "")
+                        
+                        # Create unique task name with pump and output info
+                        task_name = f"{component_name} (P{pump_info.get('pump_index', 0)+1}-O{output_num})"
+                        
+                        # Create task row with default priority
+                        result = self.create_task_row(task_name, "S", row_num, component_id, pump_info.get('pump_index', 0), output_num)
+                        if result is None:
+                            # Task row creation failed, likely due to UI issues
+                            retry_needed = True
+                            break
+                        row_num += 1
+                    
+                    if retry_needed:
+                        break
+                
+                if retry_needed:
+                    break
+            
+            # If any row creation failed, we'll retry after a short delay
+            if retry_needed:
+                print("Some task rows failed to create, retrying in 200ms...")
+                self.after(200, lambda: self.load_configuration(config_data))
+                return
+                
+            # If no components found, create some default rows
+            if not self.task_rows:
+                self.show_warning_message()
+                
+        except Exception as e:
+            print(f"Error loading configuration data: {e}")
+            import traceback
+            traceback.print_exc()  # Print full traceback for debugging
+            self.show_warning_message()
 
-    def create_task_row(self, task_name, initial_priority, row_num):
+    def build_pump_output_mapping(self, connection_summary):
+        """Build mapping of pump outputs to components"""
+        self.pump_output_mapping = {}
+        self.component_to_pump_output = {}
+        
+        # Safety check for connection_summary
+        if not isinstance(connection_summary, list):
+            print(f"Warning: Expected connection_summary to be a list, got {type(connection_summary)}")
+            return
+            
+        for pump_info in connection_summary:
+            # Check if pump_info is a dictionary, skip if not
+            if not isinstance(pump_info, dict):
+                print(f"Warning: Expected pump_info to be a dictionary, got {type(pump_info)}")
+                continue
+                
+            pump_index = pump_info.get("pump_index", 0)
+            outputs = pump_info.get("outputs", {})
+            
+            # Check if outputs is a dictionary
+            if not isinstance(outputs, dict):
+                print(f"Warning: Expected outputs to be a dictionary, got {type(outputs)}")
+                continue
+            
+            if pump_index not in self.pump_output_mapping:
+                self.pump_output_mapping[pump_index] = {}
+            
+            for output_num, components in outputs.items():
+                # Skip if components is not a list
+                if not isinstance(components, list):
+                    print(f"Warning: Expected components to be a list, got {type(components)}")
+                    continue
+                
+                self.pump_output_mapping[pump_index][output_num] = []
+                
+                for component in components:
+                    # Skip if component is not a dictionary
+                    if not isinstance(component, dict):
+                        print(f"Warning: Expected component to be a dictionary, got {type(component)}")
+                        continue
+                        
+                    component_id = component.get("actual_id", "")
+                    component_name = component.get("name", "")
+                    
+                    self.pump_output_mapping[pump_index][output_num].append(component_id)
+                    self.component_to_pump_output[component_id] = {
+                        "pump_index": pump_index,
+                        "output": output_num
+                    }
+
+    def clear_existing_rows(self):
+        """Clear existing task rows"""
+        try:
+            for row in self.task_rows:
+                try:
+                    if 'label' in row and row['label'].winfo_exists():
+                        row['label'].destroy()
+                    if 'entry_frame' in row and row['entry_frame'].winfo_exists():
+                        row['entry_frame'].destroy()
+                    if 'priority_selector' in row and row['priority_selector'].winfo_exists():
+                        row['priority_selector'].destroy()
+                except Exception as e:
+                    print(f"Error destroying row widget: {e}")
+            self.task_rows = []
+        except Exception as e:
+            print(f"Error clearing existing rows: {e}")
+            self.task_rows = []
+
+    def show_warning_message(self):
+        """Display warning when no configuration data is available"""
+        try:
+            # First clear any existing content
+            for widget in self.content_frame.winfo_children():
+                widget.destroy()
+                
+            # Reset content frame to use pack layout
+            self.content_frame.pack_forget()
+            self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+            self.content_frame.pack(fill="both", expand=True, padx=70, pady=30)
+            
+            # Create a centered message frame
+            message_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+            message_frame.pack(expand=True, fill="both", padx=50, pady=50)
+            
+            # Warning symbol
+            warning_label = ctk.CTkLabel(
+                message_frame,
+                text="⚠️",
+                font=("Arial", 48),
+            )
+            warning_label.pack(pady=(40, 10))
+            
+            # Main message
+            main_message = ctk.CTkLabel(
+                message_frame,
+                text="No Circuit Configuration Found",
+                font=self.controller.fonts.get("title", ("Arial", 24, "bold")),
+            )
+            main_message.pack(pady=(10, 5))
+            
+            # Detailed message
+            detail_message = ctk.CTkLabel(
+                message_frame,
+                text="Please configure circuits in the previous page\nbefore setting up sequences.",
+                font=self.controller.fonts.get("default", ("Arial", 14)),
+                justify="center"
+            )
+            detail_message.pack(pady=(5, 20))
+            
+            # Button to go back to circuits page
+            back_to_circuits_button = CustomButton(
+                message_frame,
+                text="Configure Circuits",
+                font=self.controller.fonts.get("default", None),
+                icon_path="assets/icons/back.png",
+                icon_side="left",
+                outlined=False,
+                command=lambda: self.controller.show_page("circuits")
+            )
+            back_to_circuits_button.pack(pady=(10, 40))
+            
+        except Exception as e:
+            print(f"Error displaying warning message: {e}")
+            try:
+                # Super simple fallback warning with minimal dependencies
+                fallback_label = ctk.CTkLabel(
+                    self,  # Use self instead of self.main_container
+                    text="Please configure circuits first",
+                    font=("Arial", 16, "bold")
+                )
+                fallback_label.pack(expand=True, pady=50)
+            except Exception as e2:
+                print(f"Fatal error displaying fallback warning: {e2}")
+
+    # Rename the old method to avoid confusion
+    def warrning_message(self):
+        """Redirects to show_warning_message for backward compatibility"""
+        self.show_warning_message()
+
+    def create_task_row(self, task_name, initial_priority, row_num, component_id=None, pump_index=None, output_num=None):
         """Create a row with task name and priority selector"""
-        # Task label
-        task_label = ctk.CTkLabel(
-            self.form_frame,
-            text=task_name,
-            font=self.controller.fonts.get("default", None), 
-            text_color="#0D0D0D",
-            anchor="w",
-        )
-        task_label.grid(row=row_num, column=0, padx=(20, 0), pady=(10, 0), sticky="w")
+        try:
+            # Ensure form_frame exists and UI is properly initialized
+            if not self.ui_initialized:
+                print("UI not initialized, initializing UI components first...")
+                self.create_ui_components()
+                # We need to return here because the form_frame might not be immediately available
+                # This will cause the load_configuration method to retry creating rows after UI is ready
+                return None
+                
+            # More robust form_frame check with tkinter winfo_exists
+            if not hasattr(self, 'form_frame'):
+                print("Error: form_frame doesn't exist at all, recreating UI components")
+                self.create_ui_components()
+                return None
+                
+            # Ensure the widget still exists in Tkinter
+            try:
+                exists = self.form_frame.winfo_exists()
+            except Exception:
+                exists = False
+                
+            if not exists:
+                print("Error: form_frame was destroyed or never properly created")
+                self.create_ui_components()
+                return None
+                
+            # At this point we're sure the form_frame exists, so create the task row
+            # Task label
+            task_label = ctk.CTkLabel(
+                self.form_frame,
+                text=task_name,
+                font=self.controller.fonts.get("default", None), 
+                text_color="#0D0D0D",
+                anchor="w",
+            )
+            task_label.grid(row=row_num, column=0, padx=(20, 0), pady=(10, 0), sticky="w")
+    
+            # Frame for the entry and dropdown
+            entry_frame = ctk.CTkFrame(self.form_frame, fg_color="transparent")
+            entry_frame.grid(row=row_num, column=1, padx=(20, 0), pady=(10, 0), sticky="ew")
+            
+            duration_entry = ctk.CTkEntry(
+                entry_frame, 
+                font=self.controller.fonts.get("default", None), 
+                placeholder_text="Duration",
+                width=70,
+                fg_color="#F8F8F8",
+                border_color="#243783",
+                text_color="#243783",
+                placeholder_text_color="#243783",
+            )
+            duration_entry.pack(side="left", padx=(0, 10))
+            
+            unit_dropdown = ctk.CTkOptionMenu(
+                entry_frame, 
+                values=["s", "ms"], 
+                font=self.controller.fonts.get("default", None),
+                width=65,
+                command=lambda x: None
+            )
+            unit_dropdown.pack(side="left", padx=(0, 10))
+            unit_dropdown.set("s")
+            
+            # Priority selector
+            priority_selector = PrioritySelector(
+                self.form_frame,
+                command=lambda p, t=task_name: self.on_priority_change(t, p),
+                initial_value=initial_priority
+            )
+            priority_selector.grid(row=row_num, column=2, padx=(5, 20), pady=(10, 0), sticky="ew")
+            
+            # Store references to the widgets for later access
+            row_data = {
+                'task_name': task_name,
+                'label': task_label,
+                'entry_frame': entry_frame,
+                'duration_entry': duration_entry,
+                'unit_dropdown': unit_dropdown,
+                'priority_selector': priority_selector,
+                'component_id': component_id,
+                'pump_index': pump_index,
+                'output_num': output_num
+            }
+            self.task_rows.append(row_data)
+            
+            return priority_selector
+            
+        except Exception as e:
+            print(f"Error creating task row: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
-        # Frame for the entry and dropdown
-        entry_frame = ctk.CTkFrame(self.form_frame, fg_color="transparent")
-        entry_frame.grid(row=row_num, column=1, padx=(20, 0), pady=(10, 0), sticky="ew")
-        
-        duration_entry = ctk.CTkEntry(
-            entry_frame, 
-            font=self.controller.fonts.get("default", None), 
-            placeholder_text="Duration",
-            width=70,
-            fg_color="#F8F8F8",
-            border_color="#243783",
-            text_color="#243783",
-            placeholder_text_color="#243783",
-        )
-        duration_entry.pack(side="left", padx=(0, 10))
-        
-        unit_dropdown = ctk.CTkOptionMenu(
-            entry_frame, 
-            values=["s", "ms"], 
-            font=self.controller.fonts.get("default", None),
-            width=65,
-            command=lambda x: None
-        )
-        unit_dropdown.pack(side="left", padx=(0, 10))
-        unit_dropdown.set("s")
-        
-        # Priority selector
-        priority_selector = PrioritySelector(
-            self.form_frame,
-            command=lambda p, t=task_name: self.on_priority_change(t, p),
-            initial_value=initial_priority
-        )
-        priority_selector.grid(row=row_num, column=2, padx=(5, 20), pady=(10, 0), sticky="ew")
-        
-        # Store references to the widgets for later access
-        self.task_rows.append({
-            'task_name': task_name,
-            'label': task_label,
-            'entry_frame': entry_frame,
-            'duration_entry': duration_entry,
-            'unit_dropdown': unit_dropdown,
-            'priority_selector': priority_selector
-        })
-        
-        return priority_selector
-    
-    def add_new_task(self):
-        """Add a new task row dynamically"""
-        new_index = len(self.task_rows)
-        task_name = f"New Task {new_index + 1}"
-        
-        # Create new task row
-        self.create_task_row(task_name, "P", new_index)
-        
-    
     def clear_all_tasks(self):
         """Clear all task rows except the first few default ones"""
         
@@ -285,11 +667,75 @@ class Sequences(ctk.CTkFrame):
         # Clear the visualization
         self.sequence_visualizer.clear_visualization()
     
-    def on_priority_change(self, task, priority):
-        """Handle priority change"""
-        print(f"Task '{task}' priority changed to: {priority}")
-        # You can add any additional logic here to handle priority changes
-    
+    def on_priority_change(self, task_name, new_priority):
+        """Handle priority change with pump output constraints"""
+        # Skip if already applying constraints
+        if self.is_applying_constraints:
+            return
+            
+        # Find the row with the matching task name
+        component_id = None
+        pump_index = None
+        output_num = None
+        
+        for row in self.task_rows:
+            if row['task_name'] == task_name:
+                component_id = row.get('component_id')
+                pump_index = row.get('pump_index')
+                output_num = row.get('output_num')
+                break
+                
+        if component_id is None or pump_index is None or output_num is None:
+            # Silent return for default components
+            return
+        
+        # Print a single message about the change
+        print(f"Applying priority constraints for component on Pump {pump_index+1} Output {output_num}")
+        
+        # Apply priority constraints based on pump outputs
+        self.apply_priority_constraints(pump_index, output_num, new_priority)
+
+    def apply_priority_constraints(self, changed_pump_index, changed_output, new_priority):
+        """Apply priority constraints based on pump output rules"""
+        try:
+            # Set flag to prevent recursive calls
+            self.is_applying_constraints = True
+            
+            # Get all outputs for this pump
+            pump_outputs = self.pump_output_mapping.get(changed_pump_index, {})
+            
+            # Find the opposite priority
+            opposite_priority = "S" if new_priority == "P" else "P"
+            
+            # Create lists for more efficient updates
+            same_output_rows = []
+            other_outputs_rows = {}
+            
+            # Group rows by output for efficiency
+            for row in self.task_rows:
+                if row['pump_index'] == changed_pump_index and row['component_id'] is not None:
+                    if row['output_num'] == changed_output:
+                        same_output_rows.append(row)
+                    elif row['output_num'] in pump_outputs:
+                        if row['output_num'] not in other_outputs_rows:
+                            other_outputs_rows[row['output_num']] = []
+                        other_outputs_rows[row['output_num']].append(row)
+            
+            # Update all components in the same output to have the same priority
+            for row in same_output_rows:
+                row['priority_selector'].select(new_priority)
+            
+            # Update all components in other outputs to have the opposite priority
+            for output_rows in other_outputs_rows.values():
+                for row in output_rows:
+                    row['priority_selector'].select(opposite_priority)
+            
+        except Exception as e:
+            print(f"Error applying priority constraints: {e}")
+        finally:
+            # Clear flag when done
+            self.is_applying_constraints = False
+
     def update_sequence(self):
         """Update the sequence based on current inputs"""
         total_duration = 0
@@ -355,6 +801,9 @@ class Sequences(ctk.CTkFrame):
                 unit = row['unit_dropdown'].get()
                 priority = row['priority_selector'].get()
                 task_name = row['task_name']
+                component_id = row.get('component_id')
+                pump_index = row.get('pump_index')
+                output_num = row.get('output_num')
                 
                 # Convert to seconds for duration_seconds field
                 if unit == "ms":
@@ -364,14 +813,24 @@ class Sequences(ctk.CTkFrame):
                     
                 total_duration_seconds += duration_seconds
                 
-                # Add task to the list
-                tasks_data.append({
+                # Add task to the list with component mapping info
+                task_data = {
                     "name": task_name,
                     "duration": duration,
                     "unit": unit,
                     "priority": priority,
                     "duration_seconds": duration_seconds
-                })
+                }
+                
+                # Add component mapping info if available
+                if component_id:
+                    task_data["component_id"] = component_id
+                if pump_index is not None:
+                    task_data["pump_index"] = pump_index
+                if output_num:
+                    task_data["output_num"] = output_num
+                
+                tasks_data.append(task_data)
                 
             except ValueError:
                 print(f"Invalid duration for task: {row['task_name']} - skipping")
@@ -381,12 +840,29 @@ class Sequences(ctk.CTkFrame):
             "sequence_configuration": {
                 "tasks": tasks_data,
                 "total_duration_seconds": total_duration_seconds,
-                "total_tasks": len(tasks_data)
+                "total_tasks": len(tasks_data),
+                #"pump_output_mapping": self.pump_output_mapping
             }
         }
         
-        # Print the configuration
-        print(sequence_configuration)
-        
-        # Also return the data in case you want to use it elsewhere
-        return sequence_configuration
+        # Save via controller - preserve the original data format
+        try:
+            # Get existing config data to check format
+            config_data = self.controller.get_config_data()
+            
+            # Update sequence configuration
+            self.controller.update_config_data("sequences", sequence_configuration)
+            
+            # Save the whole configuration
+            success = self.controller.save_whole_configuration()
+            
+            if success:
+                print("Sequence configuration saved successfully!")
+            else:
+                print("Error saving sequence configuration!")
+            
+            return sequence_configuration
+            
+        except Exception as e:
+            print(f"Error saving configuration: {e}")
+            return None
