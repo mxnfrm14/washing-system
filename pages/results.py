@@ -1,6 +1,8 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from components.custom_button import CustomButton
 from components.tabview import ThemedTabview
+from components.config_result import ConfigResult
 
 class Results(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -21,7 +23,7 @@ class Results(ctk.CTkFrame):
         self.title_label = ctk.CTkLabel(
             self.top_frame, 
             text="Results & Analysis", 
-            font=controller.fonts.get("title", None), 
+            font=self.controller.fonts.get("title", None), 
             anchor="w"
         )
         self.title_label.pack(side="left")
@@ -68,16 +70,15 @@ class Results(ctk.CTkFrame):
         
         self.scrollable_frame = ctk.CTkScrollableFrame(self.tab1, width=500, height=300, fg_color="transparent")
         self.scrollable_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        # Example content in the scrollable frame
-        for i in range(20):
-            label = ctk.CTkLabel(self.scrollable_frame, text=f"Result {i+1}", font=controller.fonts.get("default", None))
-            label.pack(pady=5, padx=10, anchor="w")
-
+        
+        self.config_result = ConfigResult(self.scrollable_frame, controller)
+        self.config_result.pack(fill="both", expand=True)
         
         # Bottom frame for buttons in tab1
         self.bottom_frame_tab1 = ctk.CTkFrame(self.tab1, fg_color="transparent")
         self.bottom_frame_tab1.pack(fill="x", pady=(10,20), padx=20, anchor="s", side="bottom")
 
+        
         # Generate Report button
         self.next_button = CustomButton(
             self.bottom_frame_tab1,
@@ -153,8 +154,11 @@ class Results(ctk.CTkFrame):
 
     def save_configuration(self):
         """Save the configuration via the controller"""
-        print("Configuration saved!")
+        if self.controller.save_whole_configuration():
+            messagebox.showinfo("Success", "Configuration saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save configuration!")
 
     def edit_configuration(self):
         """Edit the configuration via the controller"""
-        print("Editing configuration...")
+        self.controller.show_page("general_settings")

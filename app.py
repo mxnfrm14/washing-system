@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from controller import PageController
 from pages.general_settings import GeneralSettings
 from pages.washing_component import WashingComponent
@@ -113,12 +114,20 @@ class App(ctk.CTk):
                     icon_path="assets/icons/trash.png",
                     icon_side="left",
                     outlined=False,
-                    command=lambda: self.controller.show_page("general_settings"),
+                    command=self.reset_app
                 )
         self.reset_button.grid(row=0, column=2, sticky="e", padx=10, in_=self.utils_frame)
 
         self.controller.show_page("general_settings")
-    
+
+    def reset_app(self):
+        """Reset the application to its initial state"""
+        if messagebox.askyesno("Reset", "Are you sure you want to reset the application?"):
+            self.controller.reset_app()
+            self.controller.show_page("general_settings")
+            # self.navigation_frame.create_nav_indicators()
+            # self.appearance_mode_optionemenu.set("Dark")
+
     def change_appearance_mode(self, new_appearance_mode):
         """Change the appearance mode globally and update all components"""
         # Use the appearance manager to change mode and notify all components

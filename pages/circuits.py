@@ -790,3 +790,23 @@ class Circuits(ctk.CTkFrame):
         # If we reach here, the page is considered completed
         return True
     
+    def reset_app(self):
+        """Reset the application to initial state"""
+        # Clear all configurations
+        self.config = {
+            "pumps": [],
+            "washing_components": []
+        }
+        
+        # Reset instance variables
+        self.last_config_hash = None
+        self.saved_circuit_states = {}
+        
+        # Clear content frame
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        
+        # Recreate the content
+        self._create_circuit_content()
+        
+        print("Application reset to initial state")

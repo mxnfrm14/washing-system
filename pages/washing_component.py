@@ -204,7 +204,7 @@ class WashingComponent(ctk.CTkFrame):
             components = config_data.get("washing_components", [])
             if hasattr(self, 'table') and components:
                 # Clear existing data
-                self.table.clear_all_data()
+                self.table.clear()
                 # Load new data
                 for component in components:
                     # Ensure each component has an ID
@@ -280,3 +280,10 @@ class WashingComponent(ctk.CTkFrame):
         if len(self.get_configuration()) > 0:
             return True
         return False
+    
+    def reset_app(self):
+        """Reset the application to its initial state, delete all components"""
+        self.table.clear()
+        
+
+        

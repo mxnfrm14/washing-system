@@ -256,3 +256,28 @@ class PageController:
         
         # Also trigger a full save when circuits are saved via the save button
         self.save_whole_configuration()
+
+    def reset_app(self):
+        """Reset the application to its initial state"""
+        # Clear all pages
+        for page in self.pages.values():
+            if hasattr(page, 'reset_app'):
+                page.reset_app()
+        
+        self.config_data = {
+            "general_settings": {},
+            "washing_components": [],
+            "pumps": [],
+            "circuits": [],
+            "sequences": {}
+        }
+        self.completed_pages.clear()
+        
+        
+        
+        print("Application reset to initial state")
+        
+        # # Optionally, you can also clear the saved configuration file
+        # if os.path.exists(self.config_file):
+        #     os.remove(self.config_file)
+        #     print(f"Removed configuration file: {self.config_file}")

@@ -920,3 +920,7 @@ class Sequences(ctk.CTkFrame):
         
         # If all checks passed, the configuration is complete
         return True
+    
+    def reset_app(self):
+        self.clear_all_tasks()
+        self.clear_existing_rows()

@@ -417,3 +417,15 @@ class GeneralSettings(ctk.CTkFrame):
             self.controller.mark_page_completed("general_settings")
         else:
             self.controller.mark_page_incomplete("general_settings")
+    
+    def reset_app(self):
+        """Reset the application to its initial state"""
+        self.liquid_name_dropdown.set("Select liquid")
+        self.tank_ref_dropdown.set("Select tank")
+        self.vehicle_entry.delete(0, 'end')
+        self.liquid_temp_entry.delete(0, 'end')
+        self.liquid_volume_entry.delete(0, 'end')
+        self.power_voltage_entry.delete(0, 'end')
+        self.dirt_type_dropdown.set("Select dirt type")
+        self.supplier_label.configure(text="Supplier : XXXXXX")
+        self.volume_label.configure(text="Volume : X L")

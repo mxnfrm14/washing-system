@@ -269,3 +269,8 @@ class Pumps(ctk.CTkFrame):
         if len(self.get_configuration()) > 0:
             return True
         return False
+    
+    def reset_app(self):
+        """Reset the app to its initial state"""
+        self.table.clear()
+        
