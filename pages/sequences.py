@@ -495,32 +495,32 @@ class Sequences(ctk.CTkFrame):
             # First clear any existing content
             for widget in self.content_frame.winfo_children():
                 widget.destroy()
-                
-            # Reset content frame to use pack layout
-            self.content_frame.pack_forget()
-            self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-            self.content_frame.pack(fill="both", expand=True, padx=70, pady=30)
-            
+
             # Create a centered message frame
-            message_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-            message_frame.pack(expand=True, fill="both", padx=50)
-            
-            # Warning symbol
+            message_frame = ctk.CTkFrame(self.content_frame)
+            message_frame.pack(expand=True, fill="both", padx=50, pady=50)
+
+            # Center the message
+            message_frame.grid_rowconfigure(0, weight=1)
+            message_frame.grid_rowconfigure(2, weight=1)
+            message_frame.grid_columnconfigure(0, weight=1)
+
+            # Icon or warning symbol
             warning_label = ctk.CTkLabel(
                 message_frame,
-                text="       ⚠️",
+                text="⚠️",
                 font=("Arial", 48),
             )
-            warning_label.pack(pady=(40, 10))
-            
+            warning_label.grid(row=0, column=0, pady=(0, 20), padx=(70,0))
+
             # Main message
             main_message = ctk.CTkLabel(
                 message_frame,
                 text="No Circuit Configuration Found",
                 font=self.controller.fonts.get("title", ("Arial", 24, "bold")),
             )
-            main_message.pack(pady=(10, 5))
-            
+            main_message.grid(row=1, column=0, pady=(0, 10))
+
             # Detailed message
             detail_message = ctk.CTkLabel(
                 message_frame,
@@ -528,8 +528,8 @@ class Sequences(ctk.CTkFrame):
                 font=self.controller.fonts.get("default", ("Arial", 14)),
                 justify="center"
             )
-            detail_message.pack(pady=(5, 20))
-            
+            detail_message.grid(row=2, column=0, pady=(0, 20))
+
             # Button to go back to circuits page
             back_to_circuits_button = CustomButton(
                 message_frame,
@@ -540,8 +540,8 @@ class Sequences(ctk.CTkFrame):
                 outlined=False,
                 command=lambda: self.controller.show_page("circuits")
             )
-            back_to_circuits_button.pack(pady=(10, 40))
-            
+            back_to_circuits_button.grid(row=3, column=0, pady=20)
+
         except Exception as e:
             print(f"Error displaying warning message: {e}")
             try:

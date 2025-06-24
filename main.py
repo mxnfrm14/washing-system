@@ -1,9 +1,10 @@
-from app_controller import AppController
+from app_controller import Controller
 import traceback
 
 if __name__ == "__main__":
     try:
-        controller = AppController()
+        # Initialize controller without container/app for initial welcome screen
+        controller = Controller()
         controller.start()
     except Exception as e:
         print(f"Error starting application: {e}")

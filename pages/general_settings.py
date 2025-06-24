@@ -303,20 +303,63 @@ class GeneralSettings(ctk.CTkFrame):
         try:
             config = config_data.get("general_settings", {})
             
+            # Clear existing values first
+            self.vehicle_entry.delete(0, 'end')
+            self.liquid_temp_entry.delete(0, 'end')
+            self.liquid_volume_entry.delete(0, 'end')
+            self.power_voltage_entry.delete(0, 'end')
+            
+            # Load dropdown values
             if config.get("liquid_name"):
                 self.liquid_name_dropdown.set(config["liquid_name"])
+            else:
+                self.liquid_name_dropdown.set("Select liquid")
+                
+            if config.get("dirt_type"):
+                self.dirt_type_dropdown.set(config["dirt_type"])
+            else:
+                self.dirt_type_dropdown.set("Select dirt type")
+                
+            if config.get("tank_ref"):
+                self.tank_ref_dropdown.set(config["tank_ref"])
+                # Update tank details
+                self.update_tank_details(config["tank_ref"])
+            else:
+                self.tank_ref_dropdown.set("Select tank")
+            
+            # Load text fields
             if config.get("vehicle"):
                 self.vehicle_entry.insert(0, config["vehicle"])
+            
+            # Load structured fields
             if config.get("liquid_temperature"):
                 temp_config = config["liquid_temperature"]
                 if temp_config.get("value"):
                     self.liquid_temp_entry.insert(0, temp_config["value"])
                 if temp_config.get("unit"):
                     self.temp_unit_dropdown.set(temp_config["unit"])
-            # ... continue for other fields
+                # Update Fahrenheit conversion
+                self.update_fahrenheit()
+                
+            if config.get("liquid_volume"):
+                volume_config = config["liquid_volume"]
+                if volume_config.get("value"):
+                    self.liquid_volume_entry.insert(0, volume_config["value"])
+                if volume_config.get("unit"):
+                    self.volume_unit_dropdown.set(volume_config["unit"])
+                    
+            if config.get("power_voltage"):
+                voltage_config = config["power_voltage"]
+                if voltage_config.get("value"):
+                    self.power_voltage_entry.insert(0, voltage_config["value"])
+                if voltage_config.get("unit"):
+                    self.voltage_unit_dropdown.set(voltage_config["unit"])
             
+            print("General settings configuration loaded successfully")
         except Exception as e:
             print(f"Error loading general settings configuration: {e}")
+            import traceback
+            traceback.print_exc()
 
     def save_current_configuration(self):
         """Save the configuration via the controller"""

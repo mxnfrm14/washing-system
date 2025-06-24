@@ -159,6 +159,19 @@ class Results(ctk.CTkFrame):
         else:
             messagebox.showerror("Error", "Failed to save configuration!")
 
+    def load_configuration(self, config_data):
+        """Load configuration data into results page"""
+        try:
+            # Pass the configuration to the ConfigResult component
+            if hasattr(self, 'config_result'):
+                self.config_result.update_with_config(config_data)
+            
+            print("Results configuration loaded successfully")
+        except Exception as e:
+            print(f"Error loading results configuration: {e}")
+            import traceback
+            traceback.print_exc()
+
     def edit_configuration(self):
         """Edit the configuration via the controller"""
         self.controller.show_page("general_settings")

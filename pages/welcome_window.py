@@ -1,12 +1,15 @@
 import customtkinter as ctk
 from PIL import Image
 from components.custom_button import CustomButton
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import messagebox
 
 
 class WelcomeWindow(ctk.CTk):
     def __init__(self, controller):
         super().__init__()
-        self.controller = controller
+        self.controller = controller  # Use the same controller for both
         self.title("Welcome to Washing System")
         self.iconbitmap("assets/icons/logo.ico")
         self.geometry("600x400")
@@ -58,10 +61,30 @@ class WelcomeWindow(ctk.CTk):
         self.new_config_button.destroy()
         self.logo_label.destroy()
 
-
-
         self.controller.show_main_app()
 
     def load_config(self):
         """Load configuration via the controller"""
-        self.controller.load_configuration()
+        # Open file dialog to select configuration file
+        config_file = filedialog.askopenfilename(
+            title="Select Configuration File",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        
+        # If a file was selected
+        if config_file:
+            try:
+                # Load the configuration using the controller
+                if self.controller.load_whole_configuration(config_file):
+                    # If successfully loaded, show success message
+                    messagebox.showinfo("Configuration Loaded", "Configuration loaded successfully!")
+                    
+                    # Close welcome window and show main app with loaded configuration
+                    self.load_config_button.destroy()
+                    self.new_config_button.destroy()
+                    self.logo_label.destroy()
+                    self.controller.show_main_app(with_loaded_config=True)
+                else:
+                    messagebox.showerror("Error", "Failed to load configuration file!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error loading configuration: {str(e)}")

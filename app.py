@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from controller import PageController
+from app_controller import Controller
 from pages.general_settings import GeneralSettings
 from pages.washing_component import WashingComponent
 from pages.pumps import Pumps
@@ -45,7 +45,7 @@ class App(ctk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
         
         # Create page controller
-        self.controller = PageController(self.container, self)
+        self.controller = Controller(self.container, self)
         
         # Create navigation menu - IMPORTANT: Use the NavigationMenu class, not a regular frame
         self.navigation_frame = NavigationMenu(self, self.controller, appearance_mode=ctk.get_appearance_mode())

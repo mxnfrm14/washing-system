@@ -222,16 +222,27 @@ class PageController:
             print(f"Error saving configuration to file: {e}")
             return False
     
-    def load_whole_configuration(self):
+    def load_whole_configuration(self, file_path=None):
         """Load the whole configuration from disk"""
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+            # Use the provided file path if given, otherwise use default
+            config_file = file_path if file_path else self.config_file
+            
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     
                 if "configuration" in data:
                     self.config_data = data["configuration"]
-                    print(f"Configuration loaded from {self.config_file}")
+                    print(f"Configuration loaded from {config_file}")
+                    
+                    # Update the config file path if a custom one was used
+                    if file_path:
+                        self.config_file = file_path
+                    
+                    # Mark pages as completed based on the loaded configuration
+                    self._mark_completed_pages_from_config()
+                    
                     return True
         except Exception as e:
             print(f"Error loading configuration from file: {e}")
@@ -256,6 +267,66 @@ class PageController:
         
         # Also trigger a full save when circuits are saved via the save button
         self.save_whole_configuration()
+    
+    def _mark_completed_pages_from_config(self):
+        """Mark pages as completed based on loaded configuration"""
+        # General settings page
+        if self.config_data.get("general_settings"):
+            self.mark_page_completed("general_settings")
+        
+        # Washing components page
+        if self.config_data.get("washing_components"):
+            self.mark_page_completed("washing_components")
+        
+        # Pumps page
+        if self.config_data.get("pumps"):
+            self.mark_page_completed("pumps")
+        
+        # Circuits page
+        if self.config_data.get("circuits"):
+            self.mark_page_completed("circuits")
+        
+        # Sequences page
+        if self.config_data.get("sequences"):
+            self.mark_page_completed("sequence")
+
+    def show_main_app(self, with_loaded_config=False):
+        """Show the main application with optional loaded configuration"""
+        # First show the general settings page
+        self.show_page("general_settings")
+        
+        # If we have a loaded configuration, distribute it to all pages
+        if with_loaded_config:
+            self._distribute_config_to_pages()
+
+    def _distribute_config_to_pages(self):
+        """Distribute loaded configuration to all pages"""
+        for page_name, page in self.pages.items():
+            if hasattr(page, 'load_configuration'):
+                try:
+                    if page_name == "general_settings":
+                        page.load_configuration({"general_settings": self.config_data.get("general_settings", {})})
+                    elif page_name == "washing_components":
+                        page.load_configuration({"washing_components": self.config_data.get("washing_components", [])})
+                    elif page_name == "pumps":
+                        page.load_configuration({"pumps": self.config_data.get("pumps", [])})
+                    elif page_name == "circuits":
+                        page.load_configuration({
+                            "general_settings": self.config_data.get("general_settings", {}),
+                            "washing_components": self.config_data.get("washing_components", []),
+                            "pumps": self.config_data.get("pumps", []),
+                            "circuits": self.config_data.get("circuits", [])
+                        })
+                    elif page_name == "sequence":
+                        page.load_configuration({
+                            "circuits": self.config_data.get("circuits", []),
+                            "sequences": self.config_data.get("sequences", {})
+                        })
+                    elif page_name == "results":
+                        page.load_configuration(self.config_data)
+                except Exception as e:
+                    print(f"Error loading configuration for {page_name}: {e}")
+
 
     def reset_app(self):
         """Reset the application to its initial state"""

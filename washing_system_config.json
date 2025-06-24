@@ -1,0 +1,127 @@
+{
+  "timestamp": "2025-06-24 14:26:33.275921",
+  "configuration": {
+    "general_settings": {
+      "liquid_name": "Water",
+      "vehicle": "MAC",
+      "liquid_temperature": {
+        "value": "12",
+        "unit": "°C"
+      },
+      "tank_ref": "Tank S",
+      "liquid_volume": {
+        "value": "21",
+        "unit": "L"
+      },
+      "power_voltage": {
+        "value": "12",
+        "unit": "V"
+      },
+      "dirt_type": "Dirt"
+    },
+    "washing_components": [
+      {
+        "Component": "Component B",
+        "Nozzle Ref": "Nozzle Type B",
+        "D_C_N (mm)": "12.0",
+        "DZ_P_N (mm)": "12.0",
+        "Intergration Angle": "12.0",
+        "Targeted Washing Preformance": "12.0",
+        "id": "component_8dedb4ca"
+      }
+    ],
+    "pumps": [
+      {
+        "Pump Category": "Category A",
+        "Number of output": "1",
+        "Pump Name": "BWEKL 456789123 FR",
+        "Number of WC (O1)": "1",
+        "Number of WC (O2)": "0",
+        "id": "pump_8f28e8fb"
+      }
+    ],
+    "circuits": {
+      "circuits": [
+        {
+          "pump_index": 0,
+          "circuit": {
+            "components": [
+              {
+                "id": 832,
+                "type": "pump",
+                "name": "BWEKL 456789123 FR",
+                "position": [
+                  255,
+                  145
+                ],
+                "connections": 1
+              },
+              {
+                "id": 834,
+                "type": "component",
+                "name": "Component B",
+                "position": [
+                  729,
+                  127
+                ],
+                "connections": 1
+              }
+            ],
+            "connections": [
+              {
+                "from": 832,
+                "to": 834,
+                "from_name": "BWEKL 456789123 FR",
+                "to_name": "Component B",
+                "parameters": {
+                  "diameter": 12.0,
+                  "type": "Type B",
+                  "length": 12.0,
+                  "inclination": "straight",
+                  "bend_radius": 0,
+                  "ref_number": "PIP-002-B",
+                  "supplier": "AquaPipe"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "connection_summary": [
+        {
+          "pump_index": 0,
+          "pump_id": "pump_8f28e8fb",
+          "pump_name": "BWEKL 456789123 FR (1)",
+          "outputs": {
+            "1": [
+              {
+                "id": 834,
+                "name": "Component B",
+                "type": "component",
+                "actual_id": "component_8dedb4ca"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "sequences": {
+      "sequence_configuration": {
+        "tasks": [
+          {
+            "name": "Component B (P1-O1)",
+            "duration": 1.0,
+            "unit": "s",
+            "priority": "S",
+            "duration_seconds": 1.0,
+            "component_id": "component_8dedb4ca",
+            "pump_index": 0,
+            "output_num": "1"
+          }
+        ],
+        "total_duration_seconds": 1.0,
+        "total_tasks": 1
+      }
+    }
+  }
+}

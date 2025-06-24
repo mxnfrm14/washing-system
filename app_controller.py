@@ -2,62 +2,408 @@ import customtkinter as ctk
 from pages.welcome_window import WelcomeWindow
 from app import App
 from components.custom_button import CustomButton
+import json
+import os
+from datetime import datetime
+import uuid
 import time
 
-class AppController:
+class Controller:
     """
     Controller that manages the application flow between
-    the welcome screen and the main application
+    the welcome screen and the main application as well as
+    handling page navigation and configuration management
     """
-    def __init__(self):
+    def __init__(self, controller_container=None, app=None):
         # Initialize custom themes and appearance
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("theme.json")
         
         # Create the welcome window
-        self.welcome_window = WelcomeWindow(self)
+        self.welcome_window = WelcomeWindow(self, self)
         
         # Main app reference (will be created later)
         self.main_app = None
+        
+        # Page controller properties
+        self.container = controller_container
+        self.app = app
+        self.pages = {}
+        self.current_page = None
+        self.navigation_menu = None
+        # Track completed pages
+        self.completed_pages = set()
+        
+        # Initialize fonts dictionary
+        self.fonts = {}
+        if app:
+            # Get fonts from app if available
+            self.fonts = getattr(app, 'fonts', {})
+        
+        # Configuration data
+        self.config_data = {
+            "general_settings": {},
+            "washing_components": [],
+            "pumps": [],
+            "circuits": [],
+            "sequences": {}
+        }
+        
+        # Configuration file path
+        self.config_file = "washing_system_config.json"
+        
+        # Create the welcome window - only when no container is provided (initial launch)
+        if not controller_container:
+            self.welcome_window = WelcomeWindow(self)
+            # Main app reference (will be created later)
+            self.main_app = None
+    
+    # ========== App Controller Methods ==========
     
     def start(self):
         """Start the application with the welcome window"""
-        self.welcome_window.mainloop()
+        if hasattr(self, 'welcome_window'):
+            self.welcome_window.mainloop()
     
-    def show_main_app(self):
+    def show_main_app(self, with_loaded_config=False):
         """Create and show the main application"""
-        # from custom_button import CustomButton
-        # CustomButton.clear_all_instances()
-        
         # Hide the welcome window instead of destroying it
-        if self.welcome_window:
-             self.welcome_window.destroy()
-            # self.welcome_window.withdraw() # Hide root window
-            # self.welcome_window.quit() # End the mainloop and stop tcl interpreter commands
+        if hasattr(self, 'welcome_window') and self.welcome_window:
+            self.welcome_window.destroy()
         
-        # Create and show the main app
-        self.main_app = App()
-        self.main_app.mainloop()
+        # Create and show the main app if it doesn't exist yet
+        if not hasattr(self, 'main_app') or not self.main_app:
+            self.main_app = App(self)  # Pass controller to App
+        
+        # If we have a loaded configuration, distribute it to all pages
+        if with_loaded_config and hasattr(self, 'pages'):
+            # First show the general settings page
+            self.show_page("general_settings")
+            self._distribute_config_to_pages()
+        
+        if hasattr(self, 'main_app') and self.main_app:
+            self.main_app.mainloop()
 
     def on_main_app_close(self):
         """Handle main app close event"""
         # Destroy main app
-        if self.main_app:
+        if hasattr(self, 'main_app') and self.main_app:
             self.main_app.destroy()
             self.main_app = None
-        
-        
     
-    def load_configuration(self):
-        """Load a configuration file from disk"""
-        # Use a file dialog to select a configuration file
-        filename = ctk.filedialog.askopenfilename(
-            title="Load Configuration",
-            filetypes=[("Configuration files", "*.json"), ("All files", "*.*")]
-        )
+    # ========== Page Controller Methods ==========
+    
+    def set_container_and_app(self, container, app):
+        """Set the container and app for page management"""
+        self.container = container
+        self.app = app
+        # Get fonts from app if available
+        self.fonts = getattr(app, 'fonts', {})
+    
+    def set_navigation_menu(self, navigation_menu):
+        """Set the navigation menu for this controller"""
+        self.navigation_menu = navigation_menu
+    
+    def add_page(self, name, page_class):
+        """Add a page to the controller"""
+        try:
+            # Create the page instance
+            page = page_class(self.container, self)
+            
+            # Pass fonts to the page if available
+            if hasattr(page, 'fonts') and self.fonts:
+                page.fonts = self.fonts
+            
+            # Pass app reference to the page if it has an app attribute
+            if hasattr(page, 'app'):
+                page.app = self.app
+            
+            # Add the page to our dictionary
+            self.pages[name] = page
+            
+            # Configure the grid for this page
+            page.grid(row=0, column=0, sticky="nsew")
+            
+            return page
+        except Exception as e:
+            print(f"Error adding page {name}: {e}")
+            return None
+
+    def mark_page_completed(self, page_name):
+        """Mark a page as completed and update the navigation menu"""
+        if page_name in self.pages:
+            self.completed_pages.add(page_name)
+            # Update navigation menu if available
+            if self.navigation_menu and hasattr(self.navigation_menu, 'update_completion_status'):
+                self.navigation_menu.update_completion_status(page_name)
+            return True
+        return False
+    
+    def mark_page_incomplete(self, page_name):
+        """Mark a page as incomplete and update the navigation menu"""
+        if page_name in self.completed_pages:
+            self.completed_pages.remove(page_name)
+            # Update navigation menu if available
+            if self.navigation_menu and hasattr(self.navigation_menu, 'update_incomplete_status'):
+                self.navigation_menu.update_incomplete_status(page_name)
+            return True
+        return False
+    
+    def is_page_completed(self, page_name):
+        """Check if a page is marked as completed"""
+        return page_name in self.completed_pages
+
+    def show_page(self, page_name):
+        """Show the specified page and trigger the page change callback."""
+        if page_name in self.pages:
+            try:
+                # Save current page configuration before switching
+                self.save_current_page_config()
+                
+                # Get the page and bring it to the front
+                page = self.pages[page_name]
+                page.tkraise()
+                
+                # Update the current page
+                self.current_page = page_name
+                
+                # Load configuration for the new page (this will refresh circuits page)
+                self.load_page_config(page_name)
+                
+                # Special handling for pages that need refreshing
+                if page_name == "circuits" and hasattr(page, 'refresh_configuration'):
+                    page.refresh_configuration()
+
+                if page_name == "sequence" and hasattr(page, 'refresh_configuration'):
+                    page.refresh_configuration()
+                
+                # Update navigation menu if available
+                if self.navigation_menu and hasattr(self.navigation_menu, 'update_navigation_state'):
+                    try:
+                        self.navigation_menu.update_navigation_state(page_name)
+                    except Exception as e:
+                        print(f"Error updating navigation menu: {e}")
+                
+            except Exception as e:
+                print(f"Error showing page {page_name}: {e}")
+                return False
+        else:
+            print(f"Page not found: {page_name}")
+            return False
+
+    def save_current_page_config(self):
+        """Save the current configuration when changing pages"""
+        if not self.current_page or self.current_page not in self.pages:
+            return
+            
+        page = self.pages[self.current_page]
         
-        # If a file was selected, load it and start the main app
-        if filename:
-            # Here you would load the configuration
-            # For now, just start the main app
-            self.show_main_app()
+        try:
+            if self.current_page == "general_settings":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["general_settings"] = page.get_configuration()
+                    
+            elif self.current_page == "washing_components":
+                if hasattr(page, 'get_configuration'):
+                    components = page.get_configuration()
+                    # Ensure each component has an ID
+                    for component in components:
+                        if isinstance(component, dict) and 'id' not in component:
+                            component['id'] = f"component_{uuid.uuid4().hex[:8]}"
+                    self.config_data["washing_components"] = components
+                    
+            elif self.current_page == "pumps":
+                if hasattr(page, 'get_configuration'):
+                    pumps = page.get_configuration()
+                    # Ensure each pump has an ID
+                    for pump in pumps:
+                        if isinstance(pump, dict) and 'id' not in pump:
+                            pump['id'] = f"pump_{uuid.uuid4().hex[:8]}"
+                    self.config_data["pumps"] = pumps
+                    
+            elif self.current_page == "circuits":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["circuits"] = page.get_configuration()
+                    
+            elif self.current_page == "sequence":
+                if hasattr(page, 'get_configuration'):
+                    self.config_data["sequences"] = page.get_configuration()
+                    
+            print(f"Saved configuration for {self.current_page}: {len(self.config_data.get(self.current_page, []))} items")
+            
+        except Exception as e:
+            print(f"Error saving configuration for {self.current_page}: {e}")
+    
+    def load_page_config(self, page_name):
+        """Load configuration for a page that depends on previous pages"""
+        if page_name not in self.pages:
+            return
+            
+        page = self.pages[page_name]
+        
+        try:
+            if page_name == "circuits":
+                # Circuits page needs data from general_settings, washing_components, and pumps
+                circuit_config = {
+                    "general_settings": self.config_data["general_settings"],
+                    "washing_components": self.config_data["washing_components"],
+                    "pumps": self.config_data["pumps"]
+                }
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(circuit_config)
+                    
+            elif page_name == "sequence":
+                # Sequences page needs data from previous pages
+                sequence_config = {
+                    "general_settings": self.config_data["general_settings"],
+                    "washing_components": self.config_data["washing_components"],
+                    "pumps": self.config_data["pumps"],
+                    "circuits": self.config_data["circuits"]
+                }
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(sequence_config)
+                    
+            elif page_name == "results":
+                # Results page needs all previous data
+                if hasattr(page, 'load_configuration'):
+                    page.load_configuration(self.config_data)
+                    
+        except Exception as e:
+            print(f"Error loading configuration for {page_name}: {e}")
+
+    def save_whole_configuration(self):
+        """Save the whole configuration to disk"""
+        try:
+            # Save current page before saving to file
+            self.save_current_page_config()
+            
+            # Add metadata
+            config_with_metadata = {
+                "timestamp": str(datetime.now()),
+                "configuration": self.config_data
+            }
+            
+            # Save to file
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(config_with_metadata, f, indent=2, ensure_ascii=False)
+            
+            print(f"Configuration saved to {self.config_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Error saving configuration to file: {e}")
+            return False
+    
+    def load_whole_configuration(self, file_path=None):
+        """Load the whole configuration from disk"""
+        try:
+            # Use the provided file path if given, otherwise use default
+            config_file = file_path if file_path else self.config_file
+            
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    
+                if "configuration" in data:
+                    self.config_data = data["configuration"]
+                    print(f"Configuration loaded from {config_file}")
+                    
+                    # Update the config file path if a custom one was used
+                    if file_path:
+                        self.config_file = file_path
+                    
+                    # Mark pages as completed based on the loaded configuration
+                    self._mark_completed_pages_from_config()
+                    
+                    return True
+        except Exception as e:
+            print(f"Error loading configuration from file: {e}")
+        
+        return False
+    
+    def get_config_data(self, section=None):
+        """Get configuration data for a specific section or all data"""
+        if section:
+            return self.config_data.get(section, {})
+        return self.config_data
+    
+    def update_config_data(self, section, data):
+        """Update configuration data for a specific section"""
+        self.config_data[section] = data
+        print(f"Updated configuration for section: {section}")
+    
+    def save_circuit_config(self, circuits_data):
+        """Save circuit configuration data"""
+        self.config_data["circuits"] = circuits_data
+        print(f"Saved circuit configuration to controller: {len(circuits_data)} circuits")
+        
+        # Also trigger a full save when circuits are saved via the save button
+        self.save_whole_configuration()
+    
+    def _mark_completed_pages_from_config(self):
+        """Mark pages as completed based on loaded configuration"""
+        # General settings page
+        if self.config_data.get("general_settings"):
+            self.mark_page_completed("general_settings")
+        
+        # Washing components page
+        if self.config_data.get("washing_components"):
+            self.mark_page_completed("washing_components")
+        
+        # Pumps page
+        if self.config_data.get("pumps"):
+            self.mark_page_completed("pumps")
+        
+        # Circuits page
+        if self.config_data.get("circuits"):
+            self.mark_page_completed("circuits")
+        
+        # Sequences page
+        if self.config_data.get("sequences"):
+            self.mark_page_completed("sequence")
+
+    def _distribute_config_to_pages(self):
+        """Distribute loaded configuration to all pages"""
+        for page_name, page in self.pages.items():
+            if hasattr(page, 'load_configuration'):
+                try:
+                    if page_name == "general_settings":
+                        page.load_configuration({"general_settings": self.config_data.get("general_settings", {})})
+                    elif page_name == "washing_components":
+                        page.load_configuration({"washing_components": self.config_data.get("washing_components", [])})
+                    elif page_name == "pumps":
+                        page.load_configuration({"pumps": self.config_data.get("pumps", [])})
+                    elif page_name == "circuits":
+                        page.load_configuration({
+                            "general_settings": self.config_data.get("general_settings", {}),
+                            "washing_components": self.config_data.get("washing_components", []),
+                            "pumps": self.config_data.get("pumps", []),
+                            "circuits": self.config_data.get("circuits", [])
+                        })
+                    elif page_name == "sequence":
+                        page.load_configuration({
+                            "circuits": self.config_data.get("circuits", []),
+                            "sequences": self.config_data.get("sequences", {})
+                        })
+                    elif page_name == "results":
+                        page.load_configuration(self.config_data)
+                except Exception as e:
+                    print(f"Error loading configuration for {page_name}: {e}")
+
+    def reset_app(self):
+        """Reset the application to its initial state"""
+        # Clear all pages
+        for page in self.pages.values():
+            if hasattr(page, 'reset_app'):
+                page.reset_app()
+        
+        self.config_data = {
+            "general_settings": {},
+            "washing_components": [],
+            "pumps": [],
+            "circuits": [],
+            "sequences": {}
+        }
+        self.completed_pages.clear()
+        
+        print("Application reset to initial state")

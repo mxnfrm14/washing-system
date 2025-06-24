@@ -211,8 +211,18 @@ class WashingComponent(ctk.CTkFrame):
                     if 'id' not in component:
                         component['id'] = f"component_{uuid.uuid4().hex[:8]}"
                     self.table.add_row(component)
+                
+                print(f"Loaded {len(components)} washing components")
+                
+                # Check if this completes the page
+                if self.is_completed():
+                    self.controller.mark_page_completed("washing_components")
+                else:
+                    self.controller.mark_page_incomplete("washing_components")
         except Exception as e:
             print(f"Error loading washing components configuration: {e}")
+            import traceback
+            traceback.print_exc()
 
     def save_current_configuration(self):
         """Save the current configuration"""
@@ -284,6 +294,5 @@ class WashingComponent(ctk.CTkFrame):
     def reset_app(self):
         """Reset the application to its initial state, delete all components"""
         self.table.clear()
-        
 
-        
+

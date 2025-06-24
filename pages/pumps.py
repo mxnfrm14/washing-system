@@ -199,17 +199,27 @@ class Pumps(ctk.CTkFrame):
         """Load configuration into the table"""
         try:
             pumps = config_data.get("pumps", [])
-            if hasattr(self, 'table') and pumps:
-                # Clear existing data
-                self.table.clear_all_data()
+            if hasattr(self, 'table') and isinstance(pumps, list):
+                # Clear existing data properly
+                self.table.clear()
                 # Load new data
                 for pump in pumps:
                     # Ensure each pump has an ID
                     if 'id' not in pump:
                         pump['id'] = f"pump_{uuid.uuid4().hex[:8]}"
                     self.table.add_row(pump)
+                
+                print(f"Loaded {len(pumps)} pumps")
+                
+                # Check if this completes the page
+                if self.is_completed():
+                    self.controller.mark_page_completed("pumps")
+                else:
+                    self.controller.mark_page_incomplete("pumps")
         except Exception as e:
             print(f"Error loading pumps configuration: {e}")
+            import traceback
+            traceback.print_exc()
 
     def save_current_configuration(self):
         """Save the configuration via the controller"""
@@ -273,4 +283,3 @@ class Pumps(ctk.CTkFrame):
     def reset_app(self):
         """Reset the app to its initial state"""
         self.table.clear()
-        
