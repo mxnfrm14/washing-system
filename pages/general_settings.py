@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from components.custom_button import CustomButton
 
 
@@ -41,7 +42,7 @@ class GeneralSettings(ctk.CTkFrame):
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
-            command=self.save_configuration
+            command=self.save_to_disk
         )
         self.save_button.pack(side="right")
 
@@ -317,24 +318,23 @@ class GeneralSettings(ctk.CTkFrame):
         except Exception as e:
             print(f"Error loading general settings configuration: {e}")
 
-    def save_configuration(self):
+    def save_current_configuration(self):
         """Save the configuration via the controller"""
         config_data = self.get_configuration()
-        
+
         # Update controller's config data
         self.controller.update_config_data("general_settings", config_data)
         
-        # # Print for debugging
-        # print("=== Configuration Values ===")
-        # print(f"Liquid Name: {config_data['liquid_name']}")
-        # print(f"Vehicle: {config_data['vehicle']}")
-        # # ... continue printing other values
-        
+
+    def save_to_disk(self):
+        """Save the current configuration to disk"""
+        self.save_current_configuration()
         # Save to disk
         if self.controller.save_whole_configuration():
-            print("Configuration saved successfully!")
+            messagebox.showinfo("Success", "Configuration saved successfully!")
         else:
-            print("Error saving configuration!")
+            messagebox.showerror("Error", "Failed to save configuration!")   
+
         
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -373,7 +373,47 @@ class GeneralSettings(ctk.CTkFrame):
     
     def save_and_next(self):
         """Save configuration and navigate to the next page"""
-        self.controller.save_current_page_config()
-        # self.controller.update_config_data("general_settings", self.get_configuration())
-        # print(self.controller.get_config_data("general_settings"))
+        # Use the on_leave_page method to handle saving and validation
+        self.on_leave_page()
+        
+        # Navigate to the next page
         self.controller.show_page("washing_components")
+    
+    def is_form_completed(self):
+        """Check if the form is sufficiently completed to mark as done"""
+        # Get the current form values
+        config = self.get_configuration()
+        
+        # Check each field against its initial/default value and empty string
+        required_fields = [
+            config['liquid_name'] != "Select liquid",
+            config['tank_ref'] != "Select tank",
+            config['vehicle'] != "" and config['vehicle'] is not None,
+            config['liquid_temperature']['value'] != "" and config['liquid_temperature']['value'] is not None,
+            config['liquid_volume']['value'] != "" and config['liquid_volume']['value'] is not None,
+            config['power_voltage']['value'] != "" and config['power_voltage']['value'] is not None,
+            config['dirt_type'] != "Select dirt type"
+        ]
+        
+        # Return True if at least 3 of the required fields are filled
+        return all(required_fields)
+    
+    def on_leave_page(self):
+        """Called when navigating away from this page"""
+        # Save the current configuration
+        self.save_current_configuration()
+        
+        # Check if the form is still complete enough to be marked as completed
+        if self.is_form_completed():
+            self.controller.mark_page_completed("general_settings")
+        else:
+            # If it's no longer complete, mark as incomplete
+            self.controller.mark_page_incomplete("general_settings")
+    
+    def on_show_page(self):
+        """Called when the page is shown"""
+        # Check if the form is still complete
+        if self.is_form_completed():
+            self.controller.mark_page_completed("general_settings")
+        else:
+            self.controller.mark_page_incomplete("general_settings")

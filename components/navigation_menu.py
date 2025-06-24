@@ -62,6 +62,12 @@ class NavigationMenu(ctk.CTkFrame):
     def navigate_to_page(self, page_name):
         """Navigate to a page after saving current page configuration"""
         try:
+            # First check if the current page has a leave method to verify completion
+            if self.controller.current_page and self.controller.current_page in self.controller.pages:
+                current_page = self.controller.pages[self.controller.current_page]
+                if hasattr(current_page, 'on_leave_page'):
+                    current_page.on_leave_page()
+            
             # Save current page configuration before switching
             if hasattr(self.controller, 'save_current_page_config'):
                 self.controller.save_current_page_config()
@@ -70,6 +76,12 @@ class NavigationMenu(ctk.CTkFrame):
             # Navigate to the new page
             if hasattr(self.controller, 'show_page'):
                 self.controller.show_page(page_name)
+                
+                # Check if the new page should verify its completion status
+                if page_name in self.controller.pages:
+                    new_page = self.controller.pages[page_name]
+                    if hasattr(new_page, 'on_show_page'):
+                        new_page.on_show_page()
             
         except Exception as e:
             print(f"Error navigating to page {page_name}: {e}")
@@ -82,12 +94,56 @@ class NavigationMenu(ctk.CTkFrame):
             else:
                 indicator.set_inactive()
     
+    def update_completion_status(self, page_name):
+        """Update the completion status of a page indicator"""
+        if page_name in self.pages:
+            index = self.pages[page_name][1]
+            if 0 <= index < len(self.indicators):
+                # Set the indicator as completed
+                self.indicators[index].set_completed()
+                print(f"Page {page_name} marked as completed in navigation menu")
+
+    def update_incomplete_status(self, page_name):
+        """Update the completion status of a page indicator to incomplete"""
+        if page_name in self.pages:
+            index = self.pages[page_name][1]
+            if 0 <= index < len(self.indicators):
+                # Set the indicator as inactive (incomplete)
+                self.indicators[index].set_inactive()
+                print(f"Page {page_name} marked as incomplete in navigation menu")
+    
     def update_navigation_state(self, current_page):
         """Update navigation state based on current page"""
         if current_page in self.pages:
             index = self.pages[current_page][1]
-            self.set_active_indicator(index)
+            
+            # First check with the controller if the page is marked as completed
+            is_completed = False
+            if hasattr(self.controller, 'completed_pages'):
+                is_completed = current_page in self.controller.completed_pages
+            
+            # Set the appropriate state based on completion status
+            if is_completed:
+                self.indicators[index].set_completed()
+            else:
+                # If not completed, set it as active
+                self.set_active_indicator(index)
+            
             self.current_page = current_page
+            
+            # Update all other indicators based on controller's completed_pages
+            if hasattr(self.controller, 'completed_pages'):
+                for page, (_, page_index) in self.pages.items():
+                    # Skip the current page as we already handled it
+                    if page == current_page:
+                        continue
+                    
+                    # If page is completed, mark it as completed
+                    if page in self.controller.completed_pages:
+                        self.indicators[page_index].set_completed()
+                    # If page is not current and not completed, ensure it's inactive
+                    elif page_index != index:
+                        self.indicators[page_index].set_inactive()
 
     def update_appearance(self, appearance_mode):
         """Update the appearance of the navigation frame based on the appearance mode"""

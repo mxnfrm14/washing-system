@@ -38,7 +38,7 @@ class WashingComponent(ctk.CTkFrame):
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
-            command=self.save_configuration
+            command=self.save_to_disk
         )
         self.save_button.pack(side="right")
 
@@ -181,6 +181,18 @@ class WashingComponent(ctk.CTkFrame):
         if messagebox.askyesno("Delete Component", f"Are you sure you want to delete this component?\n\nComponent: {row_data.get('Component', 'Unknown')}"):
             self.table.remove_row(index)
             print(f"Deleted component at index {index}")
+            
+            self.save_current_configuration()
+        
+            # Check if there are components configured
+            if self.is_completed():
+                # Mark this page as completed
+                self.controller.mark_page_completed("washing_components")
+            else:
+                self.controller.mark_page_incomplete("washing_components")
+                self.controller.show_page("washing_components")
+        
+
 
     def get_configuration(self):
         """Get the current configuration from the table"""
@@ -202,23 +214,28 @@ class WashingComponent(ctk.CTkFrame):
         except Exception as e:
             print(f"Error loading washing components configuration: {e}")
 
-    def save_configuration(self):
+    def save_current_configuration(self):
         """Save the current configuration"""
         all_components = self.get_configuration()
         
         # Update controller's config data
         self.controller.update_config_data("washing_components", all_components)
         
-        print(f"Total components: {len(all_components)}")
-        for i, component in enumerate(all_components):
-            print(f"Component {i+1}: {component}")
+        # print(f"Total components: {len(all_components)}")
+        # for i, component in enumerate(all_components):
+        #     print(f"Component {i+1}: {component}")
+        
+    
+    def save_to_disk(self):
+        """Save the current configuration to disk"""
+        self.save_current_configuration()
         
         # Save to disk
         if self.controller.save_whole_configuration():
-            messagebox.showinfo("Success", f"Configuration saved successfully!\n\n{len(all_components)} components saved.")
+            messagebox.showinfo("Success", "Configuration saved successfully!")
         else:
-            messagebox.showerror("Error", "Failed to save configuration!")
-        
+            messagebox.showerror("Error", "Failed to save configuration!")   
+
     def update_appearance(self):
         """Update any appearance-dependent elements"""
         # Update table appearance if it exists
@@ -230,10 +247,36 @@ class WashingComponent(ctk.CTkFrame):
     
     def save_and_next(self):
         """Save configuration and navigate to the next page"""
-        self.controller.save_current_page_config()
+        self.on_leave_page()
         self.controller.show_page("pumps")
     
     def save_and_back(self):
         """Save configuration and navigate to the previous page"""
-        self.controller.save_current_page_config()
+        self.on_leave_page()
         self.controller.show_page("general_settings")
+
+    def on_leave_page(self):
+        """Called when navigating away from this page"""
+        # Save the current configuration
+        self.save_current_configuration()
+        
+        # Check if the form is still complete enough to be marked as completed
+        if self.is_completed():
+            self.controller.mark_page_completed("washing_components")
+        else:
+            # If it's no longer complete, mark as incomplete
+            self.controller.mark_page_incomplete("washing_components")
+    
+    def on_show_page(self):
+        """Called when the page is shown"""
+        # Check if the form is still complete
+        if self.is_completed():
+            self.controller.mark_page_completed("washing_components")
+        else:
+            self.controller.mark_page_incomplete("washing_components")
+
+    def is_completed(self):
+        """Check if the component configuration is completed"""
+        if len(self.get_configuration()) > 0:
+            return True
+        return False

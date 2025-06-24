@@ -47,7 +47,7 @@ class Circuits(ctk.CTkFrame):
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
-            command=self.save_configuration
+            command=self.save_to_disk
         )
         self.save_button.pack(side="right")
 
@@ -68,7 +68,7 @@ class Circuits(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("sequence")
+            command=lambda: self.save_and_next()
         )
         self.next_button.pack(side="right")
 
@@ -80,7 +80,7 @@ class Circuits(ctk.CTkFrame):
             icon_path="assets/icons/back.png",
             icon_side="left",
             outlined=True,
-            command=lambda: controller.show_page("pumps")
+            command=lambda: self.save_and_back()
         )
         self.back_button.pack(side="left")
 
@@ -632,27 +632,21 @@ class Circuits(ctk.CTkFrame):
                 result += self._follow_output_path_with_ids(conn['to'], circuit_data, components_by_id, visited)
         return result
 
-    def save_configuration(self):
+    def save_current_configuration(self):
         """Save the configuration via the controller"""
-        circuits_data = []
-        for i, designer in enumerate(self.circuit_designers):
-            circuit_data = designer.get_circuit_data()
-            circuits_data.append({
-                "pump_index": i,
-                "circuit": circuit_data
-            })
-        connection_summary = self._generate_overall_summary()
-        enhanced_circuits_data = {
-            'circuits': circuits_data,
-            'connection_summary': connection_summary
-        }
-        print(f"Saving circuit configurations: {len(circuits_data)} circuits")
-        if hasattr(self.controller, 'save_circuit_config'):
-            self.controller.save_circuit_config(enhanced_circuits_data)
-        if hasattr(self.controller, 'update_config_data'):
-            self.controller.update_config_data('circuits', enhanced_circuits_data)
-        print("Circuit configurations saved!")
-        messagebox.showinfo("Configuration Saved", "Circuit configurations have been saved successfully.")
+        circuits_data = self.get_configuration()  # Ensure we have the latest configuration
+
+        self.controller.update_config_data('circuits', circuits_data)
+
+    def save_to_disk(self):
+        """Save the current circuit configuration to disk"""
+        self.save_current_configuration()
+        # Save to disk
+        if self.controller.save_whole_configuration():
+            messagebox.showinfo("Success", "Configuration saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save configuration!")
+
 
     def get_configuration(self):
         """Get current circuit configuration for controller saving"""
@@ -737,3 +731,62 @@ class Circuits(ctk.CTkFrame):
                     "component": component
                 }
                 designer.set_mode(mode_data)
+    
+    def save_and_next(self):
+        """Save configuration and navigate to the next page"""
+        self.save_current_configuration()
+        
+        if self.is_completed():
+            self.controller.mark_page_completed("circuits")
+        else:
+            self.controller.mark_page_incomplete("circuits")
+            
+        self.controller.show_page("sequence")
+    
+    def save_and_back(self):
+        """Save configuration and navigate to the previous page"""
+        self.save_current_configuration()
+        if self.is_completed():
+            self.controller.mark_page_completed("circuits")
+        else:
+            self.controller.mark_page_incomplete("circuits")
+        self.controller.show_page("pumps")
+
+    def on_leave_page(self):
+        """Called when navigating away from this page"""
+        # Save the current configuration
+        self.save_current_configuration()
+        
+        # Check if the form is still complete enough to be marked as completed
+        if self.is_completed():
+            self.controller.mark_page_completed("circuits")
+        else:
+            # If it's no longer complete, mark as incomplete
+            self.controller.mark_page_incomplete("circuits")
+    
+    def on_show_page(self):
+        """Called when the page is shown"""
+        # Check if the form is still complete
+        if self.is_completed():
+            self.controller.mark_page_completed("circuits")
+        else:
+            self.controller.mark_page_incomplete("circuits")
+
+
+    def is_completed(self):
+        """Check if the circuits page is completed"""
+        # Check if we have at least one pump configured
+        if not self.config['pumps']:
+            return False
+        
+        # Check if all circuit designers have valid circuits
+        for designer in self.circuit_designers:
+            if not designer or not hasattr(designer, 'get_circuit_data'):
+                return False
+            circuit_data = designer.get_circuit_data()
+            if not circuit_data or not circuit_data.get('components'):
+                return False
+        
+        # If we reach here, the page is considered completed
+        return True
+    

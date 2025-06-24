@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import tkinter
+from tkinter import messagebox
 from components.custom_button import CustomButton
 from utils.open_image import open_icon
 from components.priority_selector import PrioritySelector
@@ -51,7 +52,7 @@ class Sequences(ctk.CTkFrame):
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
-            command=self.save_configuration
+            command=self.save_to_disk
         )
         self.save_button.pack(side="right")
 
@@ -73,7 +74,7 @@ class Sequences(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: self.controller.show_page("results")
+            command=lambda: self.save_and_next()
         )
         self.next_button.pack(side="right")
 
@@ -85,7 +86,7 @@ class Sequences(ctk.CTkFrame):
             icon_path="assets/icons/back.png",
             icon_side="left",
             outlined=True,
-            command=lambda: self.controller.show_page("circuits")
+            command=lambda: self.save_and_back()
         )
         self.back_button.pack(side="left")
 
@@ -502,12 +503,12 @@ class Sequences(ctk.CTkFrame):
             
             # Create a centered message frame
             message_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-            message_frame.pack(expand=True, fill="both", padx=50, pady=50)
+            message_frame.pack(expand=True, fill="both", padx=50)
             
             # Warning symbol
             warning_label = ctk.CTkLabel(
                 message_frame,
-                text="⚠️",
+                text="       ⚠️",
                 font=("Arial", 48),
             )
             warning_label.pack(pady=(40, 10))
@@ -784,9 +785,9 @@ class Sequences(ctk.CTkFrame):
                 self.sequence_visualizer.update_appearance()
             except Exception as e:
                 print(f"Error updating sequence visualizer appearance: {e}")
-
-    def save_configuration(self):
-        """Save the configuration via the controller"""
+    
+    def get_configuration(self):
+        """Get the current sequence configuration"""
         # Collect all task data
         tasks_data = []
         total_duration_seconds = 0
@@ -813,7 +814,7 @@ class Sequences(ctk.CTkFrame):
                     
                 total_duration_seconds += duration_seconds
                 
-                # Add task to the list with component mapping info
+                # Add task to the list
                 task_data = {
                     "name": task_name,
                     "duration": duration,
@@ -821,8 +822,8 @@ class Sequences(ctk.CTkFrame):
                     "priority": priority,
                     "duration_seconds": duration_seconds
                 }
-                
-                # Add component mapping info if available
+
+                 # Add component mapping info if available
                 if component_id:
                     task_data["component_id"] = component_id
                 if pump_index is not None:
@@ -841,28 +842,81 @@ class Sequences(ctk.CTkFrame):
                 "tasks": tasks_data,
                 "total_duration_seconds": total_duration_seconds,
                 "total_tasks": len(tasks_data),
-                #"pump_output_mapping": self.pump_output_mapping
             }
         }
         
-        # Save via controller - preserve the original data format
-        try:
-            # Get existing config data to check format
-            config_data = self.controller.get_config_data()
-            
-            # Update sequence configuration
-            self.controller.update_config_data("sequences", sequence_configuration)
-            
-            # Save the whole configuration
-            success = self.controller.save_whole_configuration()
-            
-            if success:
-                print("Sequence configuration saved successfully!")
-            else:
-                print("Error saving sequence configuration!")
-            
-            return sequence_configuration
-            
-        except Exception as e:
-            print(f"Error saving configuration: {e}")
-            return None
+        return sequence_configuration
+
+    def save_current_configuration(self):
+        """Save the configuration via the controller"""
+        sequences_data = self.get_configuration()  # Ensure we have the latest configuration
+        
+        self.controller.update_config_data("sequences", sequences_data)
+
+        
+    def save_to_disk(self):
+        """Save the current configuration to disk"""
+        self.save_current_configuration()
+        # Save to disk
+        if self.controller.save_whole_configuration():
+            messagebox.showinfo("Success", "Configuration saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save configuration!")
+    
+    def save_and_next(self):
+        """Save configuration and navigate to the next page"""
+        self.on_leave_page()  # Ensure current state is saved
+        
+        self.controller.show_page("results")
+    
+    def save_and_back(self):
+        """Save configuration and navigate to the previous page"""
+        self.on_leave_page()  # Ensure current state is saved
+        self.controller.show_page("circuits")
+
+    def on_leave_page(self):
+        """Called when navigating away from this page"""
+        # Save the current configuration
+        self.save_current_configuration()
+        
+        # Check if the form is still complete enough to be marked as completed
+        if self.is_completed():
+            self.controller.mark_page_completed("sequence")
+        else:
+            # If it's no longer complete, mark as incomplete
+            self.controller.mark_page_incomplete("sequence")
+    
+    def on_show_page(self):
+        """Called when the page is shown"""
+        # Check if the form is still complete
+        if self.is_completed():
+            self.controller.mark_page_completed("sequence")
+        else:
+            self.controller.mark_page_incomplete("sequence")
+
+    def is_completed(self):
+        """Check if the component configuration is completed"""
+        # Check if there are any task rows created
+        if not self.task_rows:
+            return False
+        
+        # Check if all task rows have valid durations and priorities
+        for row in self.task_rows:
+            try:
+                duration_text = row['duration_entry'].get()
+                if not duration_text:  # Empty duration is not valid
+                    return False
+                    
+                duration = float(duration_text)
+                if duration <= 0:  # Duration must be positive
+                    return False
+                    
+                priority = row['priority_selector'].get()
+                if priority not in ["P", "S"]:  # Only allow valid priorities
+                    return False
+                    
+            except ValueError:
+                return False
+        
+        # If all checks passed, the configuration is complete
+        return True

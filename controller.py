@@ -11,6 +11,8 @@ class PageController:
         self.pages = {}
         self.current_page = None
         self.navigation_menu = None
+        # Track completed pages
+        self.completed_pages = set()
         
         # Get fonts from app if available
         self.fonts = getattr(app, 'fonts', {})
@@ -54,6 +56,30 @@ class PageController:
         except Exception as e:
             print(f"Error adding page {name}: {e}")
             return None
+
+    def mark_page_completed(self, page_name):
+        """Mark a page as completed and update the navigation menu"""
+        if page_name in self.pages:
+            self.completed_pages.add(page_name)
+            # Update navigation menu if available
+            if self.navigation_menu and hasattr(self.navigation_menu, 'update_completion_status'):
+                self.navigation_menu.update_completion_status(page_name)
+            return True
+        return False
+    
+    def mark_page_incomplete(self, page_name):
+        """Mark a page as incomplete and update the navigation menu"""
+        if page_name in self.completed_pages:
+            self.completed_pages.remove(page_name)
+            # Update navigation menu if available
+            if self.navigation_menu and hasattr(self.navigation_menu, 'update_incomplete_status'):
+                self.navigation_menu.update_incomplete_status(page_name)
+            return True
+        return False
+    
+    def is_page_completed(self, page_name):
+        """Check if a page is marked as completed"""
+        return page_name in self.completed_pages
 
     def show_page(self, page_name):
         """Show the specified page and trigger the page change callback."""

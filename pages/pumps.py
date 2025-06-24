@@ -37,7 +37,7 @@ class Pumps(ctk.CTkFrame):
             icon_path="assets/icons/save.png",
             icon_side="left",
             outlined=False,
-            command=self.save_configuration
+            command=self.save_to_disk
         )
         self.save_button.pack(side="right")
 
@@ -59,7 +59,7 @@ class Pumps(ctk.CTkFrame):
             icon_path="assets/icons/next.png",
             icon_side="right",
             outlined=False,
-            command=lambda: controller.show_page("circuits")
+            command=lambda: self.save_and_next()
         )
         self.next_button.pack(side="right")
 
@@ -71,7 +71,7 @@ class Pumps(ctk.CTkFrame):
             icon_path="assets/icons/back.png",
             icon_side="left",
             outlined=True,
-            command=lambda: controller.show_page("washing_components")
+            command=lambda: self.save_and_back()
         )
         self.back_button.pack(side="left")
 
@@ -172,6 +172,15 @@ class Pumps(ctk.CTkFrame):
         if messagebox.askyesno("Delete Pump", f"Are you sure you want to delete this pump?\n\nPump: {row_data.get('Pump Name', 'Unknown')}"):
             self.table.remove_row(index)
             print(f"Deleted pump at index {index}")
+            self.controller.save_current_page_config()
+        
+            # Check if there are pumps configured
+            if self.is_completed():
+                # Mark this page as completed
+                self.controller.mark_page_completed("pumps")
+            else:
+                self.controller.mark_page_incomplete("pumps")
+                self.controller.show_page("pumps")
     
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -202,20 +211,61 @@ class Pumps(ctk.CTkFrame):
         except Exception as e:
             print(f"Error loading pumps configuration: {e}")
 
-    def save_configuration(self):
+    def save_current_configuration(self):
         """Save the configuration via the controller"""
         all_pumps = self.get_configuration()
         
         # Update controller's config data
         self.controller.update_config_data("pumps", all_pumps)
         
-        print("Saving pump configuration...")
-        print(f"Total pumps: {len(all_pumps)}")
-        for i, pump in enumerate(all_pumps):
-            print(f"Pump {i+1}: {pump}")
+        # print("Saving pump configuration...")
+        # print(f"Total pumps: {len(all_pumps)}")
+        # for i, pump in enumerate(all_pumps):
+        #     print(f"Pump {i+1}: {pump}")
+        
+    def save_to_disk(self):
+        """Save the current configuration to disk"""
+        self.save_current_configuration()
         
         # Save to disk
         if self.controller.save_whole_configuration():
-            messagebox.showinfo("Success", f"Pump configuration saved successfully!\n\n{len(all_pumps)} pumps saved.")
+            messagebox.showinfo("Success", "Configuration saved successfully!")
         else:
-            messagebox.showerror("Error", "Failed to save pump configuration!")
+            messagebox.showerror("Error", "Failed to save configuration!")
+
+
+    def save_and_next(self):
+        """Save configuration and navigate to the next page"""
+        self.on_leave_page()  
+        self.controller.show_page("circuits")
+    
+    def save_and_back(self):
+        """Save configuration and navigate to the previous page"""
+        self.on_leave_page()
+        self.controller.show_page("washing_components")
+
+    def on_leave_page(self):
+        """Called when navigating away from this page"""
+        # Save the current configuration
+        self.save_current_configuration()
+        
+        # Check if the form is still complete enough to be marked as completed
+        if self.is_completed():
+            self.controller.mark_page_completed("pumps")
+        else:
+            # If it's no longer complete, mark as incomplete
+            self.controller.mark_page_incomplete("pumps")
+    
+    def on_show_page(self):
+        """Called when the page is shown"""
+        # Check if the form is still complete
+        if self.is_completed():
+            self.controller.mark_page_completed("pumps")
+        else:
+            self.controller.mark_page_incomplete("pumps")
+
+    def is_completed(self):
+        """Check if the page is completed based on configuration"""
+        if len(self.get_configuration()) > 0:
+            return True
+        return False
