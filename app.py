@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from controller import PageController
+# from controller import PageController
 from pages.general_settings import GeneralSettings
 from pages.washing_component import WashingComponent
 from pages.pumps import Pumps
@@ -12,12 +12,14 @@ from components.navigation_menu import NavigationMenu
 from utils.appearance_manager import AppearanceManager
 
 
-ctk.set_appearance_mode('System')
+ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("theme.json")
 
 class App(ctk.CTk):
-    def __init__(self):
+    def __init__(self, controller):
         super().__init__()
+        self.controller = controller
+
         self.title("Washing System")
         self.iconbitmap("assets/icons/logo.ico")
         self.geometry("1300x800")
@@ -44,9 +46,10 @@ class App(ctk.CTk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
         
-        # Create page controller
-        self.controller = PageController(self.container, self)
-        
+        # CHANGE: Don't create a PageController.
+        # Instead, give the controller the container and fonts it needs.
+        self.controller.set_container_and_fonts(self.container, self.fonts)
+
         # Create navigation menu - IMPORTANT: Use the NavigationMenu class, not a regular frame
         self.navigation_frame = NavigationMenu(self, self.controller, appearance_mode=ctk.get_appearance_mode())
         

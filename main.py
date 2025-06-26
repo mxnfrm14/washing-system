@@ -1,11 +1,5 @@
-from app_controller import AppController
-import traceback
+from main_controller import MainController
 
 if __name__ == "__main__":
-    try:
-        controller = AppController()
-        controller.start()
-    except Exception as e:
-        print(f"Error starting application: {e}")
-        traceback.print_exc()
-        input("Press Enter to exit...")
+    main_controller = MainController()
+    main_controller.start()
