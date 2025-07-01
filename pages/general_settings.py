@@ -313,7 +313,25 @@ class GeneralSettings(ctk.CTkFrame):
                     self.liquid_temp_entry.insert(0, temp_config["value"])
                 if temp_config.get("unit"):
                     self.temp_unit_dropdown.set(temp_config["unit"])
-            # ... continue for other fields
+                self.update_fahrenheit()
+            if config.get("tank_ref"):
+                self.tank_ref_dropdown.set(config["tank_ref"])
+                self.update_tank_details(config["tank_ref"])
+            if config.get("liquid_volume"):
+                volume_config = config["liquid_volume"]
+                if volume_config.get("value"):
+                    self.liquid_volume_entry.insert(0, volume_config["value"])
+                if volume_config.get("unit"):
+                    self.volume_unit_dropdown.set(volume_config["unit"])
+            if config.get("power_voltage"):
+                voltage_config = config["power_voltage"]
+                if voltage_config.get("value"):
+                    self.power_voltage_entry.insert(0, voltage_config["value"])
+                if voltage_config.get("unit"):
+                    self.voltage_unit_dropdown.set(voltage_config["unit"])
+            if config.get("dirt_type"):
+                self.dirt_type_dropdown.set(config["dirt_type"])
+            
             
         except Exception as e:
             print(f"Error loading general settings configuration: {e}")

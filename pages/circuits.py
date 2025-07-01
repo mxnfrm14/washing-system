@@ -7,6 +7,7 @@ from components.circuit_designer import CircuitDesigner
 from components.detail_list import DetailList
 from components.mode_selector import ModeSelector
 import uuid
+from components.synthesis import Synthesis
 
 class Circuits(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -449,11 +450,12 @@ class Circuits(ctk.CTkFrame):
         # Add synthesis tab if we have pumps
         if self.config['pumps']:
             synthesis_tab = self.tab_view.add("Synthesis")
-            synthesis_label = ctk.CTkLabel(
-                synthesis_tab, 
-                text="Synthesis view will show combined circuit designs"
+            synthesis_canva = Synthesis(
+                parent=synthesis_tab, 
+                controller=self.controller, 
+                circuits=self.get_configuration()
             )
-            synthesis_label.pack(pady=20)
+            synthesis_canva.pack(fill="both", expand=True, padx=10, pady=10)
     
     def _create_no_pumps_message(self):
         """Create content when no pumps are configured"""
@@ -786,6 +788,17 @@ class Circuits(ctk.CTkFrame):
             circuit_data = designer.get_circuit_data()
             if not circuit_data or not circuit_data.get('components'):
                 return False
+            else: 
+                # Ensure all components are placed
+                for component in circuit_data.get('components', []):
+                    if component.get('type') == 'pump':
+                        # Pump must have at least one output connected
+                        if not any(conn['from'] == component['id'] for conn in circuit_data.get('connections', [])):
+                            return False
+                    elif component.get('type') == 'component':
+                        # Component must be placed in the circuit
+                        if not any(comp['name'] == component['name'] for comp in self.config['washing_components']):
+                            return False
         
         # If we reach here, the page is considered completed
         return True
