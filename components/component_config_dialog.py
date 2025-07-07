@@ -106,14 +106,7 @@ class ComponentConfigDialog(ctk.CTkToplevel):
             info_tooltip="Distance between component and nozzle"
         )
         row += 1
-        
-        # DZ Pump Nozzle with info icon
-        self._create_field_with_info(
-            row, "DZ Pump Nozzle",
-            self._create_measurement_field("dz_pump"),
-            info_tooltip="Distance between pump and nozzle"
-        )
-        row += 1
+
         
         # Integration Angle with info icon
         self._create_field_with_info(
@@ -285,11 +278,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
             entry_var = self.d_component_var
             self.d_component_unit_var = ctk.StringVar(value="mm")
             unit_var = self.d_component_unit_var
-        elif field_type == "dz_pump":
-            self.dz_pump_var = ctk.StringVar()
-            entry_var = self.dz_pump_var
-            self.dz_pump_unit_var = ctk.StringVar(value="mm")
-            unit_var = self.dz_pump_unit_var
         else:  # angle
             self.angle_var = ctk.StringVar()
             entry_var = self.angle_var
@@ -352,12 +340,10 @@ class ComponentConfigDialog(ctk.CTkToplevel):
         
         # Extract numeric values from strings
         d_c_n = self.edit_data.get("D_C_N (mm)", "")
-        dz_p_n = self.edit_data.get("DZ_P_N (mm)", "")
         angle = self.edit_data.get("Intergration Angle", "")
         performance = self.edit_data.get("Targeted Washing Preformance", "")
         
         self.d_component_var.set(d_c_n)
-        self.dz_pump_var.set(dz_p_n)
         self.angle_var.set(angle)
         self.performance_var.set(performance)
         
@@ -402,7 +388,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
         
         try:
             d_component = float(self.d_component_var.get())
-            dz_pump = float(self.dz_pump_var.get())
             angle = float(self.angle_var.get())
         except ValueError:
             self._show_error("Please enter valid numeric values for measurements")
@@ -410,7 +395,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
         
         # Convert values to standard units
         d_component_mm = self._convert_to_mm(d_component, self.d_component_unit_var.get())
-        dz_pump_mm = self._convert_to_mm(dz_pump, self.dz_pump_unit_var.get())
         angle_deg = self._convert_to_degrees(angle, self.angle_unit_var.get())
         
         # Prepare data for table
@@ -418,7 +402,6 @@ class ComponentConfigDialog(ctk.CTkToplevel):
             "Component": self.component_var.get(),
             "Nozzle Ref": self.nozzle_ref_var.get(),
             "D_C_N (mm)": str(d_component_mm),
-            "DZ_P_N (mm)": str(dz_pump_mm),
             "Intergration Angle": str(angle_deg),
             "Targeted Washing Preformance": str(performance)
         }

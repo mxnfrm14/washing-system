@@ -10,11 +10,11 @@ class GeneralSettings(ctk.CTkFrame):
         ctk.set_default_color_theme("theme.json")
 
         # Tank data dictionary (will be replaced with database later)
-        self.tank_data = {
-            "Tank S": {"supplier": "ChemCorp Ltd", "volume": "50"},
-            "Tank M": {"supplier": "FluidTech Inc", "volume": "150"},
-            "Tank L": {"supplier": "AquaSystems Pro", "volume": "300"}
-        }
+        # self.tank_data = {
+        #     "Tank S": {"supplier": "ChemCorp Ltd", "volume": "50"},
+        #     "Tank M": {"supplier": "FluidTech Inc", "volume": "150"},
+        #     "Tank L": {"supplier": "AquaSystems Pro", "volume": "300"}
+        # }
 
         # Create main container for better layout control
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
@@ -158,44 +158,44 @@ class GeneralSettings(ctk.CTkFrame):
         self.liquid_temp_entry.bind("<KeyRelease>", self.update_fahrenheit)
         self.temp_unit_dropdown.configure(command=self.update_fahrenheit)
 
-        self.tank_ref_label = ctk.CTkLabel(
-            self.form_container, 
-            text="Tank Ref.", 
-            font=controller.fonts.get("default", None),
-            anchor="w"
-        )
-        self.tank_ref_label.grid(row=1, column=3, sticky="w", pady=10)
+        # self.tank_ref_label = ctk.CTkLabel(
+        #     self.form_container, 
+        #     text="Tank Ref.", 
+        #     font=controller.fonts.get("default", None),
+        #     anchor="w"
+        # )
+        # self.tank_ref_label.grid(row=1, column=3, sticky="w", pady=10)
 
-        self.tank_ref_dropdown = ctk.CTkOptionMenu(
-            self.form_container,
-            values=["Tank S", "Tank M", "Tank L"],
-            font=controller.fonts.get("default", None),
-            dropdown_font=controller.fonts.get("default", None),
-            width=230,
-            command=self.update_tank_details
-        )
-        self.tank_ref_dropdown.set("Select tank")
-        self.tank_ref_dropdown.grid(row=1, column=4, columnspan=2, sticky="w", pady=10)
+        # self.tank_ref_dropdown = ctk.CTkOptionMenu(
+        #     self.form_container,
+        #     values=["Tank S", "Tank M", "Tank L"],
+        #     font=controller.fonts.get("default", None),
+        #     dropdown_font=controller.fonts.get("default", None),
+        #     width=230,
+        #     command=self.update_tank_details
+        # )
+        # self.tank_ref_dropdown.set("Select tank")
+        # self.tank_ref_dropdown.grid(row=1, column=4, columnspan=2, sticky="w", pady=10)
 
-        # Tank ref details (Supplier and Volume)
-        self.tank_details_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.tank_details_frame.grid(row=2, column=3, columnspan=3, sticky="ew", pady=(0, 10))
+        # # Tank ref details (Supplier and Volume)
+        # self.tank_details_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        # self.tank_details_frame.grid(row=2, column=3, columnspan=3, sticky="ew", pady=(0, 10))
         
-        self.supplier_label = ctk.CTkLabel(
-            self.tank_details_frame,
-            text="Supplier : XXXXXX",
-            font=controller.fonts.get("default", None),
-            text_color="gray"
-        )
-        self.supplier_label.pack(side="left", padx=(0, 30))
+        # self.supplier_label = ctk.CTkLabel(
+        #     self.tank_details_frame,
+        #     text="Supplier : XXXXXX",
+        #     font=controller.fonts.get("default", None),
+        #     text_color="gray"
+        # )
+        # self.supplier_label.pack(side="left", padx=(0, 30))
         
-        self.volume_label = ctk.CTkLabel(
-            self.tank_details_frame,
-            text="Volume : X L",
-            font=controller.fonts.get("default", None),
-            text_color="gray"
-        )
-        self.volume_label.pack(side="left")
+        # self.volume_label = ctk.CTkLabel(
+        #     self.tank_details_frame,
+        #     text="Volume : X L",
+        #     font=controller.fonts.get("default", None),
+        #     text_color="gray"
+        # )
+        # self.volume_label.pack(side="left")
 
         # Row 3: Liquid Volume
         self.liquid_volume_label = ctk.CTkLabel(
@@ -263,7 +263,7 @@ class GeneralSettings(ctk.CTkFrame):
             font=controller.fonts.get("default", None),
             anchor="w"
         )
-        self.dirt_type_label.grid(row=3, column=3, sticky="w", pady=10)
+        self.dirt_type_label.grid(row=1, column=3, sticky="w", pady=10)
 
         self.dirt_type_dropdown = ctk.CTkOptionMenu(
             self.form_container,
@@ -273,7 +273,7 @@ class GeneralSettings(ctk.CTkFrame):
             width=230
         )
         self.dirt_type_dropdown.set("Select dirt type")
-        self.dirt_type_dropdown.grid(row=3, column=4, sticky="w", pady=10)  
+        self.dirt_type_dropdown.grid(row=1, column=4, sticky="w", pady=10)  
 
     
     # =========================== Methodes ==========================
@@ -286,7 +286,7 @@ class GeneralSettings(ctk.CTkFrame):
                 "value": self.liquid_temp_entry.get(),
                 "unit": self.temp_unit_dropdown.get()
             },
-            "tank_ref": self.tank_ref_dropdown.get(),
+            # "tank_ref": self.tank_ref_dropdown.get(),
             "liquid_volume": {
                 "value": self.liquid_volume_entry.get(),
                 "unit": self.volume_unit_dropdown.get()
@@ -314,9 +314,9 @@ class GeneralSettings(ctk.CTkFrame):
                 if temp_config.get("unit"):
                     self.temp_unit_dropdown.set(temp_config["unit"])
                 self.update_fahrenheit()
-            if config.get("tank_ref"):
-                self.tank_ref_dropdown.set(config["tank_ref"])
-                self.update_tank_details(config["tank_ref"])
+            # if config.get("tank_ref"):
+            #     self.tank_ref_dropdown.set(config["tank_ref"])
+            #     self.update_tank_details(config["tank_ref"])
             if config.get("liquid_volume"):
                 volume_config = config["liquid_volume"]
                 if volume_config.get("value"):
@@ -379,15 +379,15 @@ class GeneralSettings(ctk.CTkFrame):
             except:
                 self.fareniheit_label.configure(text="0.0°F")
 
-    def update_tank_details(self, selected_tank):
-        """Update supplier and volume labels based on selected tank"""
-        if selected_tank in self.tank_data:
-            tank_info = self.tank_data[selected_tank]
-            self.supplier_label.configure(text=f"Supplier : {tank_info['supplier']}")
-            self.volume_label.configure(text=f"Volume : {tank_info['volume']} L")
-        else:
-            self.supplier_label.configure(text="Supplier : XXXXXX")
-            self.volume_label.configure(text="Volume : X L")
+    # def update_tank_details(self, selected_tank):
+    #     """Update supplier and volume labels based on selected tank"""
+    #     if selected_tank in self.tank_data:
+    #         tank_info = self.tank_data[selected_tank]
+    #         self.supplier_label.configure(text=f"Supplier : {tank_info['supplier']}")
+    #         self.volume_label.configure(text=f"Volume : {tank_info['volume']} L")
+    #     else:
+    #         self.supplier_label.configure(text="Supplier : XXXXXX")
+    #         self.volume_label.configure(text="Volume : X L")
     
     def save_and_next(self):
         """Save configuration and navigate to the next page"""
@@ -405,7 +405,7 @@ class GeneralSettings(ctk.CTkFrame):
         # Check each field against its initial/default value and empty string
         required_fields = [
             config['liquid_name'] != "Select liquid",
-            config['tank_ref'] != "Select tank",
+            # config['tank_ref'] != "Select tank",
             config['vehicle'] != "" and config['vehicle'] is not None,
             config['liquid_temperature']['value'] != "" and config['liquid_temperature']['value'] is not None,
             config['liquid_volume']['value'] != "" and config['liquid_volume']['value'] is not None,
@@ -439,7 +439,7 @@ class GeneralSettings(ctk.CTkFrame):
     def reset_app(self):
         """Reset the application to its initial state"""
         self.liquid_name_dropdown.set("Select liquid")
-        self.tank_ref_dropdown.set("Select tank")
+        # self.tank_ref_dropdown.set("Select tank")
         self.vehicle_entry.delete(0, 'end')
         self.liquid_temp_entry.delete(0, 'end')
         self.liquid_volume_entry.delete(0, 'end')
