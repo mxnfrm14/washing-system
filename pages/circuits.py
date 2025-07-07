@@ -19,6 +19,15 @@ class Circuits(ctk.CTkFrame):
         self.last_config_hash = None
         self.saved_circuit_states = {}  # Store circuit data for each pump
         
+        # Synthesis tab references
+        self.synthesis_tab = None
+        self.synthesis_content = None
+        self.synthesis_placeholder = None
+        
+        # Polling state
+        self._polling_active = False
+        self._last_circuit_state = None
+        
         # Get configuration from controller (from previous pages)
         self.config = self._get_config_from_controller()
 
@@ -344,9 +353,163 @@ class Circuits(ctk.CTkFrame):
         print(f"Warning: No configuration found for component '{component_name}'")
         return None
 
+    def _create_synthesis_placeholder(self):
+        """Create placeholder content for synthesis tab when circuit is not completed"""
+        placeholder_frame = ctk.CTkFrame(self.synthesis_tab)
+        placeholder_frame.pack(fill="both", expand=True, padx=50, pady=50)
+        
+        # Center the content
+        placeholder_frame.grid_rowconfigure(0, weight=1)
+        placeholder_frame.grid_rowconfigure(2, weight=1)
+        placeholder_frame.grid_columnconfigure(0, weight=1)
+        
+        # Icon
+        icon_label = ctk.CTkLabel(
+            placeholder_frame,
+            text="🔧",
+            font=("Arial", 48)
+        )
+        icon_label.grid(row=0, column=0, pady=(0, 10))
+        
+        # Main message
+        main_message = ctk.CTkLabel(
+            placeholder_frame,
+            text="Circuit Synthesis Not Available",
+            font=self.controller.fonts.get("title", ("Arial", 24, "bold"))
+        )
+        main_message.grid(row=1, column=0, pady=(0, 10))
+        
+        # Detailed message
+        detail_message = ctk.CTkLabel(
+            placeholder_frame,
+            text="Please complete all circuit configurations\nto view the synthesis diagram.",
+            font=self.controller.fonts.get("default", ("Arial", 14)),
+            justify="center"
+        )
+        detail_message.grid(row=2, column=0, pady=(0, 10))
+        
+        # Requirements list
+        requirements_frame = ctk.CTkFrame(placeholder_frame, fg_color="transparent")
+        requirements_frame.grid(row=3, column=0, pady=10)
+        
+        requirements_title = ctk.CTkLabel(
+            requirements_frame,
+            text="Requirements:",
+            font=self.controller.fonts.get("subtitle", ("Arial", 16, "bold"))
+        )
+        requirements_title.pack(pady=(0, 10))
+        
+        requirements = [
+            "✓ Place all pumps in circuits",
+            "✓ Connect pumps to components or connectors",
+            "✓ Ensure all washing components are connected",
+            "✓ Complete pipe configurations for all connections"
+        ]
+        
+        for req in requirements:
+            req_label = ctk.CTkLabel(
+                requirements_frame,
+                text=req,
+                font=self.controller.fonts.get("default", ("Arial", 12)),
+                anchor="w"
+            )
+            req_label.pack(anchor="w", pady=2)
+        
+        # Add refresh button
+        refresh_button = CustomButton(
+            placeholder_frame,
+            text="Check Again",
+            font=self.controller.fonts.get("default", None),
+            icon_path="assets/icons/refresh.png",
+            icon_side="left",
+            outlined=False,
+            command=self._manual_refresh_synthesis
+        )
+        refresh_button.grid(row=4, column=0, pady=10)
+        
+        return placeholder_frame
+    
+    def _start_synthesis_polling(self):
+        """Start polling for circuit changes to update synthesis tab"""
+        self._last_circuit_state = None
+        self._polling_active = True
+        self._check_circuit_changes()
+    
+    def _stop_synthesis_polling(self):
+        """Stop polling for circuit changes"""
+        self._polling_active = False
+        if hasattr(self, '_polling_after_id'):
+            try:
+                self.after_cancel(self._polling_after_id)
+            except:
+                pass
+    
+    def _check_circuit_changes(self):
+        """Check if circuits have changed and update synthesis if needed"""
+        if not self._polling_active:
+            return
+        
+        try:
+            # Get current circuit state
+            current_state = self._get_circuit_state_hash()
+            
+            # Compare with last known state
+            if hasattr(self, '_last_circuit_state') and current_state != self._last_circuit_state:
+                print("Circuit state changed, updating synthesis...")
+                self._update_synthesis_tab()
+            
+            # Update last known state
+            self._last_circuit_state = current_state
+            
+            # Schedule next check
+            self._polling_after_id = self.after(2000, self._check_circuit_changes)  # Check every 2 seconds
+            
+        except Exception as e:
+            print(f"Error in circuit change polling: {e}")
+            # Continue polling even if there's an error
+            self._polling_after_id = self.after(2000, self._check_circuit_changes)
+    
+    def _get_circuit_state_hash(self):
+        """Get a hash representing the current state of all circuits"""
+        import hashlib
+        import json
+        
+        try:
+            state_data = []
+            for i, designer in enumerate(self.circuit_designers):
+                if designer and hasattr(designer, 'get_circuit_data'):
+                    circuit_data = designer.get_circuit_data()
+                    # Simplify data for hashing
+                    simplified = {
+                        'components': len(circuit_data.get('components', [])),
+                        'connections': len(circuit_data.get('connections', [])),
+                        'component_types': sorted([comp.get('type', '') for comp in circuit_data.get('components', [])]),
+                        'has_pump': any(comp.get('type') == 'pump' for comp in circuit_data.get('components', []))
+                    }
+                    state_data.append(simplified)
+            
+            state_str = json.dumps(state_data, sort_keys=True)
+            return hashlib.md5(state_str.encode()).hexdigest()
+        except Exception as e:
+            print(f"Error generating circuit state hash: {e}")
+            return str(hash(str(len(self.circuit_designers))))
+    
+    def _manual_refresh_synthesis(self):
+        """Manually refresh synthesis tab when user clicks the button"""
+        print("Manual synthesis refresh triggered...")
+        self._update_synthesis_tab()
+    
+    def destroy(self):
+        """Clean up when destroying the widget"""
+        self._stop_synthesis_polling()
+        super().destroy()
 
     def _create_circuit_content(self):
         """Create or recreate the circuit content based on current configuration"""
+        # Stop any existing polling
+        if hasattr(self, '_polling_active'):
+            self._stop_synthesis_polling()
+        
         # Check if we need to refresh based on configuration changes
         current_hash = self._get_config_hash(self.config)
         should_clear_circuits = (self.last_config_hash is None or 
@@ -373,6 +536,9 @@ class Circuits(ctk.CTkFrame):
         self.current_tab_index = 0
         self.shared_detail_list = None
         self.global_placed_components = set()
+        self.synthesis_tab = None
+        self.synthesis_content = None
+        self.synthesis_placeholder = None
         
         # Check if we have pumps configured
         if not self.config['pumps']:
@@ -449,13 +615,57 @@ class Circuits(ctk.CTkFrame):
         
         # Add synthesis tab if we have pumps
         if self.config['pumps']:
-            synthesis_tab = self.tab_view.add("Synthesis")
-            synthesis_canva = Synthesis(
-                parent=synthesis_tab, 
+            self.synthesis_tab = self.tab_view.add("Synthesis")
+            self._update_synthesis_tab()
+            
+            # Start polling for circuit changes
+            self._start_synthesis_polling()
+    
+    def _update_synthesis_tab(self):
+        """Update synthesis tab based on circuit completion status"""
+        if not self.synthesis_tab:
+            print("No synthesis tab found")
+            return
+        
+        print("Updating synthesis tab...")
+        
+        # Clear existing content
+        for widget in self.synthesis_tab.winfo_children():
+            widget.destroy()
+        
+        # Check completion status
+        is_complete = self.is_completed()
+        print(f"Circuit completion status: {is_complete}")
+        
+        if is_complete:
+            # Circuit is completed, show synthesis
+            print("Creating synthesis content...")
+            self.synthesis_content = Synthesis(
+                parent=self.synthesis_tab, 
                 controller=self.controller, 
                 circuits=self.get_configuration()
             )
-            synthesis_canva.pack(fill="both", expand=True, padx=10, pady=10)
+            self.synthesis_content.pack(fill="both", expand=True, padx=10, pady=10)
+            self.synthesis_placeholder = None
+            print("Synthesis tab enabled - circuit is completed")
+        else:
+            # Circuit is not completed, show placeholder
+            print("Creating synthesis placeholder...")
+            self.synthesis_placeholder = self._create_synthesis_placeholder()
+            self.synthesis_content = None
+            print("Synthesis tab disabled - circuit is not completed")
+    
+    def _on_component_placement(self, component_name, placed=True):
+        """Handle component placement/removal across all tabs and update synthesis"""
+        # Update all detail lists
+        for detail_list in self.detail_lists:
+            if placed:
+                detail_list.mark_component_placed(component_name)
+            else:
+                detail_list.mark_component_available(component_name)
+        
+        # Update synthesis tab based on new completion status
+        self._update_synthesis_tab()
     
     def _create_no_pumps_message(self):
         """Create content when no pumps are configured"""
@@ -517,15 +727,6 @@ class Circuits(ctk.CTkFrame):
         for detail_list in self.detail_lists:
             for component_name in all_placed:
                 detail_list.mark_component_placed(component_name)
-    
-    def _on_component_placement(self, component_name, placed=True):
-        """Handle component placement/removal across all tabs"""
-        # Update all detail lists
-        for detail_list in self.detail_lists:
-            if placed:
-                detail_list.mark_component_placed(component_name)
-            else:
-                detail_list.mark_component_available(component_name)
     
     def _get_config_from_controller(self):
         """Get configuration from controller (from previous pages)"""
@@ -637,7 +838,6 @@ class Circuits(ctk.CTkFrame):
     def save_current_configuration(self):
         """Save the configuration via the controller"""
         circuits_data = self.get_configuration()  # Ensure we have the latest configuration
-
         self.controller.update_config_data('circuits', circuits_data)
 
     def save_to_disk(self):
@@ -648,7 +848,6 @@ class Circuits(ctk.CTkFrame):
             messagebox.showinfo("Success", "Configuration saved successfully!")
         else:
             messagebox.showerror("Error", "Failed to save configuration!")
-
 
     def get_configuration(self):
         """Get current circuit configuration for controller saving"""
@@ -774,37 +973,76 @@ class Circuits(ctk.CTkFrame):
         else:
             self.controller.mark_page_incomplete("circuits")
 
-
     def is_completed(self):
         """Check if the circuits page is completed"""
+        print("Checking circuit completion status...")
+        
         # Check if we have at least one pump configured
         if not self.config['pumps']:
+            print("❌ No pumps configured")
             return False
         
+        print(f"✓ Found {len(self.config['pumps'])} pumps configured")
+        
         # Check if all circuit designers have valid circuits
-        for designer in self.circuit_designers:
+        if not hasattr(self, 'circuit_designers') or not self.circuit_designers:
+            print("❌ No circuit designers found")
+            return False
+        
+        for i, designer in enumerate(self.circuit_designers):
+            print(f"Checking circuit designer {i+1}...")
+            
             if not designer or not hasattr(designer, 'get_circuit_data'):
+                print(f"❌ Circuit designer {i+1} is invalid")
                 return False
+            
             circuit_data = designer.get_circuit_data()
             if not circuit_data or not circuit_data.get('components'):
+                print(f"❌ Circuit designer {i+1} has no components")
                 return False
-            else: 
-                # Ensure all components are placed
-                for component in circuit_data.get('components', []):
-                    if component.get('type') == 'pump':
-                        # Pump must have at least one output connected
-                        if not any(conn['from'] == component['id'] for conn in circuit_data.get('connections', [])):
-                            return False
-                    elif component.get('type') == 'component':
-                        # Component must be placed in the circuit
-                        if not any(comp['name'] == component['name'] for comp in self.config['washing_components']):
-                            return False
+            
+            components = circuit_data.get('components', [])
+            connections = circuit_data.get('connections', [])
+            
+            print(f"  - Components: {len(components)}")
+            print(f"  - Connections: {len(connections)}")
+            
+            # Check if there's at least one pump component
+            pump_components = [comp for comp in components if comp.get('type') == 'pump']
+            if not pump_components:
+                print(f"❌ Circuit {i+1} has no pump component")
+                return False
+            
+            # Check if pump has at least one output connected
+            pump_connected = False
+            for pump_comp in pump_components:
+                pump_id = pump_comp.get('id')
+                pump_connections = [conn for conn in connections if conn.get('from') == pump_id]
+                if pump_connections:
+                    pump_connected = True
+                    print(f"  ✓ Pump {pump_comp.get('name', 'Unknown')} has {len(pump_connections)} connections")
+                    break
+            
+            if not pump_connected:
+                print(f"❌ Circuit {i+1} pump has no output connections")
+                return False
+            
+            # Check if there are washing components
+            washing_components = [comp for comp in components if comp.get('type') == 'component']
+            if washing_components:
+                print(f"  ✓ Circuit {i+1} has {len(washing_components)} washing components")
+            else:
+                print(f"⚠️ Circuit {i+1} has no washing components (this might be okay if using connectors)")
         
-        # If we reach here, the page is considered completed
+        # If we reach here, all circuits are valid
+        print("✅ All circuits are completed!")
         return True
     
     def reset_app(self):
         """Reset the application to initial state"""
+        # Stop polling
+        self._stop_synthesis_polling()
+        
         # Clear all configurations
         self.config = {
             "pumps": [],
