@@ -201,7 +201,7 @@ class Pumps(ctk.CTkFrame):
             pumps = config_data.get("pumps", [])
             if hasattr(self, 'table') and pumps:
                 # Clear existing data
-                self.table.clear_all_data()
+                self.table.clear()
                 # Load new data
                 for pump in pumps:
                     # Ensure each pump has an ID
