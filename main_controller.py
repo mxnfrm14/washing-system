@@ -151,25 +151,11 @@ class MainController:
 
     def load_page_config(self, page_name):
         """Loads dependencies for pages that need data from others."""
-        if page_name not in self.pages: return
+        if page_name not in self.pages: 
+            return
         page = self.pages[page_name]
 
-        config_to_load = None
-        if page_name == "circuits":
-            config_to_load = {
-                "general_settings": self.get_config_data("general_settings"),
-                "washing_components": self.get_config_data("washing_components"),
-                "pumps": self.get_config_data("pumps")
-            }
-        elif page_name == "sequence":
-            config_to_load = {
-                "general_settings": self.get_config_data("general_settings"),
-                "washing_components": self.get_config_data("washing_components"),
-                "pumps": self.get_config_data("pumps"),
-                "circuits": self.get_config_data("circuits")
-            }
-        elif page_name == "results":
-            config_to_load = self.config_data
+        config_to_load = self.config_data
 
         if config_to_load and hasattr(page, 'load_configuration'):
             page.load_configuration(config_to_load)

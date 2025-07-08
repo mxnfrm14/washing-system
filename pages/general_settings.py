@@ -302,6 +302,16 @@ class GeneralSettings(ctk.CTkFrame):
         """Load configuration into the form"""
         try:
             config = config_data.get("general_settings", {})
+            # Clear all entry fields first to prevent duplication
+            self.vehicle_entry.delete(0, 'end')
+            self.liquid_temp_entry.delete(0, 'end')
+            self.liquid_volume_entry.delete(0, 'end')
+            self.power_voltage_entry.delete(0, 'end')
+
+            self.vehicle_entry._activate_placeholder()
+            self.liquid_temp_entry._activate_placeholder()
+            self.liquid_volume_entry._activate_placeholder()
+            self.power_voltage_entry._activate_placeholder()
             
             if config.get("liquid_name"):
                 self.liquid_name_dropdown.set(config["liquid_name"])
@@ -413,7 +423,7 @@ class GeneralSettings(ctk.CTkFrame):
             config['dirt_type'] != "Select dirt type"
         ]
         
-        # Return True if at least 3 of the required fields are filled
+        # Return True if ALL of the required fields are filled
         return all(required_fields)
     
     def on_leave_page(self):
