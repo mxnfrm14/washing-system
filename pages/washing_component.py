@@ -87,7 +87,7 @@ class WashingComponent(ctk.CTkFrame):
         self.content_frame.grid_columnconfigure(1, weight=0, minsize=300)
 
         # Define sample headers and data
-        headers = ["Component", "Nozzle Ref", "D_C_N (mm)", "DZ_P_N (mm)", "Intergration Angle", "Targeted Washing Preformance"]
+        headers = ["Component", "Nozzle Ref", "D_C_N (mm)", "Intergration Angle", "Targeted Washing Preformance"]
         
         # Start with empty data or some initial data
         data = []
@@ -109,7 +109,6 @@ class WashingComponent(ctk.CTkFrame):
             130,  # Component
             100,  # Nozzle Ref
             100,  # D_C_N (mm)
-            100,  # DZ_P_N (mm)
             140,  # Integration Angle
             200,  # Targeted Washing Performance
         ]
@@ -124,7 +123,7 @@ class WashingComponent(ctk.CTkFrame):
                 edit_command=self.show_edit_dialog,
                 delete_command=self.delete_row,
                 appearance_mode=ctk.get_appearance_mode(),
-                column_widths=column_widths,
+                # column_widths=column_widths,
             )
             self.table.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         except Exception as e:
