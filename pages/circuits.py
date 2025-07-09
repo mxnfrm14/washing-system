@@ -141,53 +141,53 @@ class Circuits(ctk.CTkFrame):
                     except Exception as e:
                         print(f"Error restoring circuit state for pump {i}: {e}")
     
-    def _restore_circuit_to_designer(self, designer, circuit_data):
-        """Restore a specific circuit to a designer"""
-        if not circuit_data or not designer:
-            return
+    # def _restore_circuit_to_designer(self, designer, circuit_data):
+    #     """Restore a specific circuit to a designer"""
+    #     if not circuit_data or not designer:
+    #         return
         
-        # Restore components
-        components = circuit_data.get('components', [])
-        for comp_data in components:
-            try:
-                # Recreate the component data structure
-                component = {
-                    'name': comp_data['name'],
-                    'type': comp_data['type'],
-                    'max_connections': comp_data.get('connections', 0)
-                }
+    #     # Restore components
+    #     components = circuit_data.get('components', [])
+    #     for comp_data in components:
+    #         try:
+    #             # Recreate the component data structure
+    #             component = {
+    #                 'name': comp_data['name'],
+    #                 'type': comp_data['type'],
+    #                 'max_connections': comp_data.get('connections', 0)
+    #             }
                 
-                # If it's a connector, add subtype
-                if comp_data['type'] in ['t_connector', 'y_connector', 'straight_connector']:
-                    component['subtype'] = comp_data['type']
-                    component['type'] = 'connector'
+    #             # If it's a connector, add subtype
+    #             if comp_data['type'] in ['t_connector', 'y_connector', 'straight_connector']:
+    #                 component['subtype'] = comp_data['type']
+    #                 component['type'] = 'connector'
                 
-                # Place the component
-                x, y = comp_data['position']
-                designer.place_component(x, y, component)
+    #             # Place the component
+    #             x, y = comp_data['position']
+    #             designer.place_component(x, y, component)
                 
-            except Exception as e:
-                print(f"Error restoring component {comp_data.get('name', 'Unknown')}: {e}")
+    #         except Exception as e:
+    #             print(f"Error restoring component {comp_data.get('name', 'Unknown')}: {e}")
         
-        # Restore connections after all components are placed
-        connections = circuit_data.get('connections', [])
-        for conn_data in connections:
-            try:
-                # Find the placed items by matching names and positions
-                from_item_id = None
-                to_item_id = None
+    #     # Restore connections after all components are placed
+    #     connections = circuit_data.get('connections', [])
+    #     for conn_data in connections:
+    #         try:
+    #             # Find the placed items by matching names and positions
+    #             from_item_id = None
+    #             to_item_id = None
                 
-                for item_id, item_data in designer.placed_items.items():
-                    if item_data['name'] == conn_data['from_name']:
-                        from_item_id = item_id
-                    elif item_data['name'] == conn_data['to_name']:
-                        to_item_id = item_id
+    #             for item_id, item_data in designer.placed_items.items():
+    #                 if item_data['name'] == conn_data['from_name']:
+    #                     from_item_id = item_id
+    #                 elif item_data['name'] == conn_data['to_name']:
+    #                     to_item_id = item_id
                 
-                if from_item_id and to_item_id:
-                    designer.create_connection(from_item_id, to_item_id, conn_data.get('parameters', {}))
+    #             if from_item_id and to_item_id:
+    #                 designer.create_connection(from_item_id, to_item_id, conn_data.get('parameters', {}))
                 
-            except Exception as e:
-                print(f"Error restoring connection: {e}")
+    #         except Exception as e:
+    #             print(f"Error restoring connection: {e}")
     
     def _analyze_circuit_connections(self, circuit_data):
         """Analyze circuit connections to determine component hierarchy"""
@@ -729,88 +729,70 @@ class Circuits(ctk.CTkFrame):
                 detail_list.mark_component_placed(component_name)
     
     def _get_config_from_controller(self):
-        """Get configuration from controller (from previous pages)"""
-        # Try to get actual config from controller
+        """Get configuration from controller - Fixed to separate original vs display names"""
         if hasattr(self.controller, 'get_config_data'):
             try:
-                # Get the configuration data
                 washing_components = self.controller.get_config_data('washing_components')
                 pumps_data = self.controller.get_config_data('pumps')
                 
-                # Convert to expected format
                 config = {
                     "pumps": [],
                     "washing_components": []
                 }
                 
-                # Process pumps data
+                # Process pumps - separate original name from display name
                 if pumps_data and isinstance(pumps_data, list):
                     for pump_index, pump in enumerate(pumps_data):
                         if isinstance(pump, dict):
-                            # Convert pump data to expected format
-                            pump_name = pump.get('Pump Name', 'Unknown Pump')
-                            # Use existing ID or generate new one
+                            original_pump_name = pump.get('Pump Name', 'Unknown Pump')
                             pump_id = pump.get('id', f"pump_{uuid.uuid4().hex[:8]}")
+                            
                             pump_config = {
                                 "id": pump_id,
-                                "name": pump_name,
-                                "display_name": f"{pump_name} ({pump_index + 1})" if pump_name else f"Pump {pump_index + 1}",
+                                "name": original_pump_name,  # Original name for saving
+                                "display_name": f"{original_pump_name} ({pump_index + 1})",  # Display name for UI
                                 "outputs": int(pump.get('Number of output', 1)),
                                 "max_connections": int(pump.get('Number of output', 1)),
                                 "washing_components_per_output": {}
                             }
                             
-                            # Parse washing components per output from the saved format
                             outputs = int(pump.get('Number of output', 1))
                             for i in range(1, outputs + 1):
-                                # Look for keys like "Number of WC (O1)", "Number of WC (O2)", etc.
                                 wc_key = f"Number of WC (O{i})"
-                                if wc_key in pump:
-                                    pump_config["washing_components_per_output"][i] = int(pump.get(wc_key, 0))
-                                else:
-                                    pump_config["washing_components_per_output"][i] = 0
+                                pump_config["washing_components_per_output"][i] = int(pump.get(wc_key, 0))
                             
                             config["pumps"].append(pump_config)
                 
-                # Process washing components data
+                # Process washing components - separate original name from display name
                 if washing_components and isinstance(washing_components, list):
                     for comp_index, component in enumerate(washing_components):
                         if isinstance(component, dict):
-                            comp_name = component.get('Component', 'Unknown Component')
-                            # Use existing ID or generate new one
+                            original_comp_name = component.get('Component', 'Unknown Component')
                             comp_id = component.get('id', f"component_{uuid.uuid4().hex[:8]}")
+                            
                             comp_config = {
                                 "id": comp_id,
-                                "name": comp_name,
-                                "display_name": f"{comp_name} ({comp_index + 1})" if comp_name else f"Component {comp_index + 1}",
+                                "name": original_comp_name,  # Original name for saving
+                                "display_name": f"{original_comp_name} ({comp_index + 1})",  # Display name for UI
                                 "type": "component"
                             }
                             config["washing_components"].append(comp_config)
                         elif isinstance(component, str):
-                            # Handle string format
                             comp_config = {
                                 "id": f"component_{uuid.uuid4().hex[:8]}",
-                                "name": component,
-                                "display_name": f"{component} ({comp_index + 1})" if component else f"Component {comp_index + 1}",
+                                "name": component,  # Original name
+                                "display_name": f"{component} ({comp_index + 1})",  # Display name
                                 "type": "component"
                             }
                             config["washing_components"].append(comp_config)
                 
                 print(f"Loaded config from controller: {len(config['pumps'])} pumps, {len(config['washing_components'])} components")
-                # Debug: Print pump configurations
-                for pump in config['pumps']:
-                    print(f"Pump: {pump['display_name']} (ID: {pump['id']}), Outputs: {pump['outputs']}, WC per output: {pump['washing_components_per_output']}")
-                
                 return config
                 
             except Exception as e:
                 print(f"Error getting config from controller: {e}")
         
-        # Return empty config if no data available
-        return {
-            "pumps": [],
-            "washing_components": []
-        }
+        return {"pumps": [], "washing_components": []}
 
     def _follow_output_path_with_ids(self, start_id, circuit_data, components_by_id, visited=None):
         """Recursively follow the path from a given id, collecting component info with IDs."""
@@ -891,9 +873,322 @@ class Circuits(ctk.CTkFrame):
         print(f"Circuits page refreshed: {len(self.config['pumps'])} pumps, {len(self.config['washing_components'])} components")
     
     def load_configuration(self, config_data):
-        """Load configuration data and refresh the page"""
-        print("Loading configuration for circuits page...")
+        """Load configuration data and restore all circuit designs"""
+        print("🔄 Loading configuration for circuits page...")
+        
+        # Extract circuit data from config
+        loaded_circuits_data = None
+        if 'circuits' in config_data:
+            circuits_section = config_data['circuits']
+            if isinstance(circuits_section, dict) and 'circuits' in circuits_section:
+                loaded_circuits_data = circuits_section['circuits']
+            elif isinstance(circuits_section, list):
+                loaded_circuits_data = circuits_section
+        
+        print(f"📊 Found {len(loaded_circuits_data) if loaded_circuits_data else 0} circuits to restore")
+        
+        # Refresh the configuration (rebuilds UI with new pump/component data)
         self.refresh_configuration()
+        
+        # Restore circuits after UI is built
+        if loaded_circuits_data:
+            self.after_idle(lambda: self._restore_circuits_from_config(loaded_circuits_data))
+
+
+    def _restore_circuits_from_config(self, circuits_data):
+        """Restore circuit designs from loaded configuration data"""
+        print(f"🔧 Restoring {len(circuits_data)} circuits...")
+        
+        if not hasattr(self, 'circuit_designers') or not self.circuit_designers:
+            print("❌ No circuit designers available")
+            return
+        
+        restored_count = 0
+        
+        for circuit_config in circuits_data:
+            pump_index = circuit_config.get("pump_index", 0)
+            circuit_data = circuit_config.get("circuit", {})
+            
+            if 0 <= pump_index < len(self.circuit_designers):
+                designer = self.circuit_designers[pump_index]
+                components = circuit_data.get('components', [])
+                connections = circuit_data.get('connections', [])
+                
+                if designer and (components or connections):
+                    print(f"  📦 Restoring circuit {pump_index}: {len(components)} components, {len(connections)} connections")
+                    try:
+                        self._restore_single_circuit(designer, circuit_data)
+                        restored_count += 1
+                        print(f"  ✅ Circuit {pump_index} restored successfully")
+                    except Exception as e:
+                        print(f"  ❌ Error restoring circuit {pump_index}: {e}")
+            else:
+                print(f"  ⚠️ Invalid pump index: {pump_index}")
+        
+        print(f"🎉 Restoration complete: {restored_count}/{len(circuits_data)} circuits restored")
+        
+        # Update synthesis tab
+        self._update_synthesis_tab()
+        
+        # Mark as completed if any circuits were restored
+        if restored_count > 0:
+            self.controller.mark_page_completed("circuits")
+
+    def _restore_single_circuit(self, designer, circuit_data):
+        """Restore a single circuit to its designer - with better position handling"""
+        # Clear existing circuit
+        designer.reset_canvas()
+        
+        components = circuit_data.get('components', [])
+        connections = circuit_data.get('connections', [])
+        
+        if not components:
+            return
+        
+        # Give the canvas a moment to properly size itself
+        designer.canvas.update_idletasks()
+        
+        # Phase 1: Place all components
+        id_mapping = {}  # Map saved canvas IDs to new canvas IDs
+        
+        for comp_data in components:
+            comp_name = comp_data.get('name', 'Unknown')
+            comp_type = comp_data.get('type', 'unknown')
+            position = comp_data.get('position', [100, 100])
+            saved_canvas_id = comp_data.get('id')
+            
+            print(f"    🔧 Restoring: {comp_name} ({comp_type}) at {position}")
+            
+            # Find the corresponding component in our configuration
+            component_info = self._find_component_config(comp_name, comp_type)
+            
+            if component_info:
+                # Place the component at the saved position
+                x, y = position
+                designer.place_component(x, y, component_info)
+                
+                # Find the newly created canvas item (with flexible position matching)
+                new_canvas_id = self._find_placed_component(designer, comp_name, comp_type, x, y)
+                if new_canvas_id:
+                    id_mapping[saved_canvas_id] = new_canvas_id
+                    print(f"      ✅ Placed {comp_name} -> canvas ID {new_canvas_id}")
+                else:
+                    print(f"      ❌ Could not find placed component: {comp_name}")
+                    # Debug: show all placed items
+                    print(f"      🔍 Available items:")
+                    for item_id, item_data in designer.placed_items.items():
+                        print(f"        - {item_id}: {item_data.get('name')} ({item_data.get('type')}) at {item_data.get('coords')}")
+            else:
+                print(f"      ❌ Could not find config for: {comp_name} ({comp_type})")
+        
+        # Phase 2: Restore connections
+        print(f"    🔗 Restoring {len(connections)} connections...")
+        for conn_data in connections:
+            saved_from_id = conn_data.get('from')
+            saved_to_id = conn_data.get('to')
+            parameters = conn_data.get('parameters', {})
+            
+            # Map to new canvas IDs
+            new_from_id = id_mapping.get(saved_from_id)
+            new_to_id = id_mapping.get(saved_to_id)
+            
+            if new_from_id and new_to_id:
+                designer.create_connection(new_from_id, new_to_id, parameters)
+                print(f"      🔗 Connected {conn_data.get('from_name', '')} -> {conn_data.get('to_name', '')}")
+            else:
+                print(f"      ❌ Could not restore connection: {saved_from_id} -> {saved_to_id}")
+                print(f"          From ID {saved_from_id} mapped to {new_from_id}")
+                print(f"          To ID {saved_to_id} mapped to {new_to_id}")
+                print(f"          Available mappings: {id_mapping}")
+
+    def _find_component_config(self, comp_name, comp_type):
+        """Find component configuration data using original names"""
+        print(f"      🔍 Looking for {comp_type}: '{comp_name}'")
+        
+        if comp_type == 'pump':
+            # Find pump by original name (no suffixes)
+            for pump in self.config.get('pumps', []):
+                pump_name = pump.get('name', '')  # Original name without suffix
+                
+                if comp_name == pump_name:
+                    print(f"        ✅ Found pump: {pump_name}")
+                    return {
+                        'name': comp_name,
+                        'type': 'pump',
+                        'id': pump.get('id', 'pump_unknown'),
+                        'max_connections': pump.get('outputs', 2)
+                    }
+        
+        elif comp_type == 'component':
+            # Find washing component by original name (no suffixes)
+            for component in self.config.get('washing_components', []):
+                comp_config_name = component.get('name', '')  # Original name without suffix
+                
+                if comp_name == comp_config_name:
+                    print(f"        ✅ Found component: {comp_config_name}")
+                    return {
+                        'name': comp_name,
+                        'type': 'component',
+                        'id': component.get('id', 'component_unknown'),
+                        'max_connections': 1
+                    }
+        
+        elif comp_type in ['t_connector', 'y_connector', 'straight_connector']:
+            # Connectors don't need config lookup
+            return {
+                'name': comp_name,
+                'type': 'connector',
+                'subtype': comp_type,
+                'max_connections': 3 if comp_type in ['t_connector', 'y_connector'] else 2
+            }
+        
+        print(f"        ❌ No match found for {comp_type}: '{comp_name}'")
+        return None
+
+    def _find_placed_component(self, designer, comp_name, comp_type, x, y):
+        """Find a placed component - flexible position matching for restoration"""
+        print(f"        🔍 Looking for placed component: {comp_name} at ({x}, {y})")
+        
+        # First try: exact name and type match (ignore position for now)
+        candidates = []
+        for item_id, item_data in designer.placed_items.items():
+            item_name = item_data.get('name', '')
+            item_type = item_data.get('type', '')
+            item_coords = item_data.get('coords', [0, 0])
+            
+            print(f"          Checking: {item_name} ({item_type}) at {item_coords}")
+            
+            # Check name and type match
+            if comp_name == item_name and comp_type == item_type:
+                candidates.append((item_id, item_coords))
+                print(f"          ✅ Name/type match found: {item_id}")
+        
+        if not candidates:
+            print(f"        ❌ No name/type matches found for {comp_name}")
+            return None
+        
+        if len(candidates) == 1:
+            # Only one match - return it regardless of position
+            item_id = candidates[0][0]
+            actual_coords = candidates[0][1]
+            print(f"        ✅ Single match found: {item_id} at {actual_coords}")
+            return item_id
+        
+        # Multiple matches - find closest by position
+        print(f"        📍 Multiple matches found, finding closest to ({x}, {y})")
+        best_match = None
+        best_distance = float('inf')
+        
+        for item_id, item_coords in candidates:
+            item_x, item_y = item_coords
+            distance = ((item_x - x) ** 2 + (item_y - y) ** 2) ** 0.5
+            print(f"          Distance to {item_id}: {distance:.1f}")
+            
+            if distance < best_distance:
+                best_distance = distance
+                best_match = item_id
+        
+        if best_match:
+            print(f"        ✅ Best match: {best_match} (distance: {best_distance:.1f})")
+            return best_match
+        
+        print(f"        ❌ No suitable match found")
+        return None
+
+
+    def _restore_circuit_to_designer(self, designer, circuit_data):
+        """Restore a specific circuit to a designer (enhanced version)"""
+        if not circuit_data or not designer:
+            return
+        
+        try:
+            # Clear existing circuit first
+            designer.reset_canvas()
+            
+            # Get components and connections from circuit data
+            components = circuit_data.get('components', [])
+            connections = circuit_data.get('connections', [])
+            
+            print(f"Restoring {len(components)} components and {len(connections)} connections...")
+            
+            # First pass: Place all components
+            placed_items_map = {}  # Map from saved component data to new item IDs
+            
+            for comp_data in components:
+                try:
+                    # Extract component information
+                    comp_name = comp_data.get('name', 'Unknown')
+                    comp_type = comp_data.get('type', 'unknown')
+                    position = comp_data.get('position', [100, 100])
+                    comp_id = comp_data.get('id', '')
+                    
+                    print(f"Restoring component: {comp_name} ({comp_type}) at {position}")
+                    
+                    # Create component data structure for placement
+                    component_info = {
+                        'name': comp_name,
+                        'type': comp_type,
+                        'id': comp_id
+                    }
+                    
+                    # Handle different component types
+                    if comp_type == 'pump':
+                        # For pumps, get max connections from the component data
+                        component_info['max_connections'] = comp_data.get('connections', 2)
+                    elif comp_type in ['t_connector', 'y_connector', 'straight_connector']:
+                        # For connectors, set type and subtype correctly
+                        component_info['subtype'] = comp_type
+                        component_info['type'] = 'connector'
+                    elif comp_type == 'component':
+                        # For washing components
+                        component_info['max_connections'] = 1
+                    
+                    # Place the component at its saved position
+                    x, y = position if isinstance(position, (list, tuple)) and len(position) >= 2 else [100, 100]
+                    designer.place_component(x, y, component_info)
+                    
+                    # Store mapping for connection restoration
+                    # We need to find the newly created item ID
+                    for item_id, item_data in designer.placed_items.items():
+                        if (item_data.get('name') == comp_name and 
+                            item_data.get('type') == comp_type and
+                            item_data.get('coords') == (x, y)):
+                            placed_items_map[comp_id] = item_id
+                            break
+                    
+                except Exception as e:
+                    print(f"Error restoring component {comp_data.get('name', 'Unknown')}: {e}")
+                    continue
+            
+            # Second pass: Restore connections after all components are placed
+            print(f"Restoring {len(connections)} connections...")
+            
+            for conn_data in connections:
+                try:
+                    from_id = conn_data.get('from')
+                    to_id = conn_data.get('to')
+                    parameters = conn_data.get('parameters', {})
+                    
+                    # Map old IDs to new item IDs
+                    new_from_id = placed_items_map.get(from_id)
+                    new_to_id = placed_items_map.get(to_id)
+                    
+                    if new_from_id and new_to_id:
+                        print(f"Restoring connection: {conn_data.get('from_name', '')} -> {conn_data.get('to_name', '')}")
+                        designer.create_connection(new_from_id, new_to_id, parameters)
+                    else:
+                        print(f"Warning: Could not restore connection from {from_id} to {to_id} (items not found)")
+                        
+                except Exception as e:
+                    print(f"Error restoring connection: {e}")
+                    continue
+            
+            print(f"Successfully restored circuit to designer")
+            
+        except Exception as e:
+            print(f"Error in _restore_circuit_to_designer: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _generate_overall_summary(self):
         """Generate overall summary with per-output component mapping using IDs."""
@@ -915,7 +1210,7 @@ class Circuits(ctk.CTkFrame):
                 "pump_index": i,
                 "pump_id": pump_config.get('id', f'pump_{i}'),
                 "pump_name": pump_config.get('display_name', f'Pump {i+1}'),
-                "outputs": outputs
+                "outputs":outputs
             }
             connection_summary.append(pump_summary)
         return connection_summary

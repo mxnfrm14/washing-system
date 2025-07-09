@@ -63,7 +63,7 @@ class ConfigResult(ctk.CTkFrame):
         pump_frame.pack(side="left", padx=(0, 20))
         ctk.CTkLabel(pump_frame, text="🦾", font=("Arial", 22)).pack()
         ctk.CTkLabel(pump_frame, text="Pump", text_color="#2a3a6c", font=("Arial", 11, "bold")).pack()
-        ctk.CTkLabel(pump_frame, text=circuit.get("pump_name", "PpumpOUT"), font=("Arial", 10)).pack()
+        # ctk.CTkLabel(pump_frame, text=circuit.get("pump_name", "PpumpOUT"), font=("Arial", 10)).pack()
 
         # --- Flow rate & Pressure loss (left) ---
         left_info = ctk.CTkFrame(diagram, fg_color="transparent")

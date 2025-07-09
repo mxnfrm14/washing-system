@@ -26,6 +26,9 @@ class Sequences(ctk.CTkFrame):
         # Add flag to prevent recursive priority changes
         self.is_applying_constraints = False
 
+        # Get configuration from controller (from previous pages)
+        self.config = self._get_config_from_controller()
+
         # Create main container for better layout control
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True)
@@ -59,7 +62,6 @@ class Sequences(ctk.CTkFrame):
         # Divider
         self.divider = ctk.CTkFrame(self.main_container, height=2, corner_radius=0, fg_color="#F8F8F8")
         self.divider.pack(pady=(0, 20), fill="x")
-
 
         # =========================== Navigation Buttons ==========================
         # Bottom frame for navigation buttons
@@ -239,71 +241,105 @@ class Sequences(ctk.CTkFrame):
             traceback.print_exc()
             self.ui_initialized = False  # Make sure flag is reset on error
 
-    def _get_config_hash(self, config_data):
+    def _get_config_from_controller(self):
+        """Get configuration from controller (from previous pages)"""
+        # Try to get actual config from controller
+        if hasattr(self.controller, 'get_config_data'):
+            try:
+                # Get the configuration data
+                washing_components = self.controller.get_config_data('washing_components')
+                pumps_data = self.controller.get_config_data('pumps')
+                circuits_data = self.controller.get_config_data('circuits')
+                sequences_data = self.controller.get_config_data('sequences')  # Add sequences data
+                
+                # Convert to expected format
+                config = {
+                    "washing_components": washing_components or [],
+                    "pumps": pumps_data or [],
+                    "circuits": circuits_data or [],
+                    "sequences": sequences_data or {}  # Include sequences in config
+                }
+                
+                print(f"Loaded config from controller: circuits={len(config.get('circuits', []))}, sequences={bool(sequences_data)}")
+                return config
+                
+            except Exception as e:
+                print(f"Error getting config from controller: {e}")
+        
+        # Return empty config if no data available
+        return {
+            "washing_components": [],
+            "pumps": [],
+            "circuits": [],
+            "sequences": {}
+        }
+
+    def _get_config_hash(self, config):
         """Generate a hash of the configuration to detect changes"""
         import hashlib
         import json
         
         # Create a simplified version for hashing
-        config_for_hash = {}
+        config_for_hash = {
+            'washing_components': len(config.get('washing_components', [])),
+            'pumps': len(config.get('pumps', [])),
+            'circuits': len(config.get('circuits', []))
+        }
         
-        # Include circuit data in the hash
-        if 'circuits' in config_data:
-            circuits = config_data.get('circuits', [])
-            if isinstance(circuits, list):
-                config_for_hash['circuits'] = len(circuits)
-            elif isinstance(circuits, dict) and 'connection_summary' in circuits:
-                config_for_hash['connection_summary'] = len(circuits.get('connection_summary', []))
+        # Include circuit data in more detail
+        circuits_data = config.get("circuits", [])
+        if isinstance(circuits_data, list):
+            config_for_hash['circuits_count'] = len(circuits_data)
+        elif isinstance(circuits_data, dict) and 'connection_summary' in circuits_data:
+            config_for_hash['connection_summary'] = len(circuits_data.get('connection_summary', []))
         
         config_str = json.dumps(config_for_hash, sort_keys=True)
         return hashlib.md5(config_str.encode()).hexdigest()
 
     def refresh_configuration(self):
         """Refresh the page with updated configuration from controller"""
+        print("Refreshing sequences page configuration...")
+        
+        # Get updated configuration
+        new_config = self._get_config_from_controller()
+        
+        # Check if configuration actually changed
+        new_hash = self._get_config_hash(new_config)
+        if self.last_config_hash == new_hash:
+            print("Configuration unchanged, skipping refresh")
+            return
+        
+        # Update configuration
+        self.config = new_config
+        
+        # Update hash
+        self.last_config_hash = new_hash
+        
+        # Recreate the content
+        self._create_sequence_content()
+        
+        print(f"Sequences page refreshed")
+
+    def _create_sequence_content(self):
+        """Create or recreate the sequence content based on current configuration"""
         try:
-            print("Refreshing sequences page configuration...")
-            
-            # Get updated configuration from controller
-            config_data = self.controller.get_config_data()
-            
-            # Check if configuration actually changed
-            new_hash = self._get_config_hash(config_data)
-            if self.last_config_hash == new_hash:
-                print("Configuration unchanged, skipping refresh")
-                return
-            
-            # Update hash
-            self.last_config_hash = new_hash
-            
-            # If UI isn't initialized or needs refreshing, rebuild it
+            # If UI isn't initialized, rebuild it
             if not self.ui_initialized:
                 self.create_ui_components()
             
             # Clear any existing rows
             self.clear_existing_rows()
             
-            # Load fresh configuration data
-            self.load_configuration(config_data)
-            
-            print("Sequences page refresh complete")
+            # Load configuration data
+            self.load_configuration_from_config()
             
         except Exception as e:
-            print(f"Error refreshing sequences page: {e}")
+            print(f"Error creating sequence content: {e}")
             import traceback
             traceback.print_exc()
 
-    def show(self):
-        """Called when the page is shown"""
-        try:
-            print("Sequences page is now active, refreshing...")
-            self.refresh_configuration()
-        except Exception as e:
-            print(f"Error showing sequences page: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def load_configuration(self, config_data=None):
-        """Load configuration data from controller and create task rows"""
+    def load_configuration_from_config(self):
+        """Load configuration data from self.config and create task rows"""
         try:
             # Make sure UI is initialized before loading configuration
             if not self.ui_initialized:
@@ -311,21 +347,17 @@ class Sequences(ctk.CTkFrame):
                 self.create_ui_components()
                 
                 # Add a delay to ensure UI components are fully created
-                self.after(100, lambda: self.load_configuration(config_data))
+                self.after(100, lambda: self.load_configuration_from_config())
                 return
             
-            # Use provided config_data or get from controller
-            if config_data is None:
-                config_data = self.controller.get_config_data()
-            
-            # Safety check - make sure config_data is a dictionary
-            if not isinstance(config_data, dict):
-                print(f"Warning: config_data is not a dictionary, got {type(config_data)}")
+            # Safety check - make sure config is available
+            if not hasattr(self, 'config') or not isinstance(self.config, dict):
+                print(f"Warning: config is not available or not a dictionary")
                 self.show_warning_message()
                 return
             
             # Get circuits data
-            circuits_data = config_data.get("circuits", [])
+            circuits_data = self.config.get("circuits", [])
             
             # Handle different formats of circuit data
             connection_summary = []
@@ -349,6 +381,26 @@ class Sequences(ctk.CTkFrame):
                 self.show_warning_message()
                 return
             
+            # Get saved sequences data
+            sequences_data = self.config.get("sequences", {})
+            saved_tasks = {}
+            
+            # Extract saved task data if available
+            if isinstance(sequences_data, dict) and "sequence_configuration" in sequences_data:
+                sequence_config = sequences_data["sequence_configuration"]
+                if isinstance(sequence_config, dict) and "tasks" in sequence_config:
+                    saved_tasks_list = sequence_config["tasks"]
+                    if isinstance(saved_tasks_list, list):
+                        # Create a mapping by component_id for quick lookup
+                        for task in saved_tasks_list:
+                            if isinstance(task, dict) and "component_id" in task:
+                                saved_tasks[task["component_id"]] = task
+                            elif isinstance(task, dict) and "name" in task:
+                                # Fallback: use task name for mapping
+                                saved_tasks[task["name"]] = task
+            
+            print(f"Found {len(saved_tasks)} saved tasks to restore")
+            
             # Clear existing task rows
             self.clear_existing_rows()
             
@@ -367,6 +419,7 @@ class Sequences(ctk.CTkFrame):
                     
                 pump_name = pump_info.get("pump_name", "Unknown Pump")
                 outputs = pump_info.get("outputs", {})
+                pump_index = pump_info.get("pump_index", 0)  # Get pump index
                 
                 # Check if outputs is a dictionary
                 if not isinstance(outputs, dict):
@@ -389,10 +442,31 @@ class Sequences(ctk.CTkFrame):
                         component_id = component.get("actual_id", "")
                         
                         # Create unique task name with pump and output info
-                        task_name = f"{component_name} (P{pump_info.get('pump_index', 0)+1}-O{output_num})"
+                        task_name = f"{component_name} (P{pump_index+1}-O{output_num})"
                         
-                        # Create task row with default priority
-                        result = self.create_task_row(task_name, "S", row_num, component_id, pump_info.get('pump_index', 0), output_num)
+                        # Get saved values for this component
+                        saved_task = saved_tasks.get(component_id) or saved_tasks.get(task_name)
+                        initial_priority = "S"  # default
+                        saved_duration = ""
+                        saved_unit = "s"
+                        
+                        if saved_task:
+                            initial_priority = saved_task.get("priority", "S")
+                            saved_duration = str(saved_task.get("duration", ""))
+                            saved_unit = saved_task.get("unit", "s")
+                            print(f"Restoring task {task_name}: duration={saved_duration}{saved_unit}, priority={initial_priority}")
+                        
+                        # Create task row with saved or default values
+                        result = self.create_task_row(
+                            task_name, 
+                            initial_priority, 
+                            row_num, 
+                            component_id, 
+                            pump_index,  # Pass pump index
+                            output_num,   # Pass output number
+                            saved_duration,  # Pass saved duration
+                            saved_unit      # Pass saved unit
+                        )
                         if result is None:
                             # Task row creation failed, likely due to UI issues
                             retry_needed = True
@@ -408,10 +482,10 @@ class Sequences(ctk.CTkFrame):
             # If any row creation failed, we'll retry after a short delay
             if retry_needed:
                 print("Some task rows failed to create, retrying in 200ms...")
-                self.after(200, lambda: self.load_configuration(config_data))
+                self.after(200, lambda: self.load_configuration_from_config())
                 return
                 
-            # If no components found, create some default rows
+            # If no components found, show warning
             if not self.task_rows:
                 self.show_warning_message()
                 
@@ -420,6 +494,11 @@ class Sequences(ctk.CTkFrame):
             import traceback
             traceback.print_exc()  # Print full traceback for debugging
             self.show_warning_message()
+
+    def load_configuration(self, config_data=None):
+        """Load configuration data and refresh the page"""
+        print("Loading configuration for sequences page...")
+        self.refresh_configuration()
 
     def build_pump_output_mapping(self, connection_summary):
         """Build mapping of pump outputs to components"""
@@ -555,12 +634,7 @@ class Sequences(ctk.CTkFrame):
             except Exception as e2:
                 print(f"Fatal error displaying fallback warning: {e2}")
 
-    # Rename the old method to avoid confusion
-    def warrning_message(self):
-        """Redirects to show_warning_message for backward compatibility"""
-        self.show_warning_message()
-
-    def create_task_row(self, task_name, initial_priority, row_num, component_id=None, pump_index=None, output_num=None):
+    def create_task_row(self, task_name, initial_priority, row_num, component_id=None, pump_index=None, output_num=None, saved_duration="", saved_unit="s"):
         """Create a row with task name and priority selector"""
         try:
             # Ensure form_frame exists and UI is properly initialized
@@ -615,6 +689,10 @@ class Sequences(ctk.CTkFrame):
             )
             duration_entry.pack(side="left", padx=(0, 10))
             
+            # Set saved duration value if available
+            if saved_duration:
+                duration_entry.insert(0, saved_duration)
+            
             unit_dropdown = ctk.CTkOptionMenu(
                 entry_frame, 
                 values=["s", "ms"], 
@@ -623,7 +701,7 @@ class Sequences(ctk.CTkFrame):
                 command=lambda x: None
             )
             unit_dropdown.pack(side="left", padx=(0, 10))
-            unit_dropdown.set("s")
+            unit_dropdown.set(saved_unit)  # Set saved unit value
             
             # Priority selector
             priority_selector = PrioritySelector(
@@ -753,6 +831,8 @@ class Sequences(ctk.CTkFrame):
                 unit = row['unit_dropdown'].get()
                 priority = row['priority_selector'].get()
                 task_name = row['task_name']
+                pump_index = row.get('pump_index', 0)
+                output_num = row.get('output_num', '1')
                 
                 # Convert to seconds for total calculation
                 if unit == "ms":
@@ -762,20 +842,27 @@ class Sequences(ctk.CTkFrame):
                     
                 total_duration += duration_seconds
                 
-                # Add to tasks data for visualization
+                # Add to tasks data for visualization with pump information
                 tasks_data.append({
                     'name': task_name,
                     'duration': duration,
                     'unit': unit,
-                    'priority': priority
+                    'priority': priority,
+                    'pump_index': pump_index,
+                    'output_num': output_num
                 })
                 
-                print(f"Task: {task_name}, Duration: {duration}{unit}, Priority: {priority}")
+                print(f"Task: {task_name}, Duration: {duration}{unit}, Priority: {priority}, Pump: {pump_index + 1}, Output: {output_num}")
             except ValueError:
                 print(f"Invalid duration for task: {row['task_name']}")
         
         # Update the sequence visualizer
         self.sequence_visualizer.update_visualization(tasks_data)
+        if self.is_completed():
+            self.controller.mark_page_completed("sequence")
+        else:
+            self.controller.mark_page_incomplete("sequence")
+            self.controller.show_page("sequence")
     
     def update_appearance(self):
         """Update any appearance-dependent elements"""
@@ -820,16 +907,14 @@ class Sequences(ctk.CTkFrame):
                     "duration": duration,
                     "unit": unit,
                     "priority": priority,
-                    "duration_seconds": duration_seconds
+                    "duration_seconds": duration_seconds,
+                    "pump_index": pump_index,
+                    "output_num": output_num
                 }
 
                  # Add component mapping info if available
                 if component_id:
                     task_data["component_id"] = component_id
-                if pump_index is not None:
-                    task_data["pump_index"] = pump_index
-                if output_num:
-                    task_data["output_num"] = output_num
                 
                 tasks_data.append(task_data)
                 
@@ -922,5 +1007,19 @@ class Sequences(ctk.CTkFrame):
         return True
     
     def reset_app(self):
+        """Reset the app to its initial state"""
         self.clear_all_tasks()
         self.clear_existing_rows()
+        
+        # Clear configuration
+        self.config = {
+            "washing_components": [],
+            "pumps": [],
+            "circuits": []
+        }
+        
+        # Reset hash to force refresh next time
+        self.last_config_hash = None
+        
+        # Recreate content
+        self._create_sequence_content()

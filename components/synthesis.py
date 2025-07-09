@@ -24,6 +24,7 @@ class Synthesis(ctk.CTkFrame):
         }
         
         # Load icons
+        self.icon_size = 40  # Size of component icons
         self.loaded_icons = {}
         self._load_icons()
 
@@ -34,7 +35,15 @@ class Synthesis(ctk.CTkFrame):
         self.vertical_spacing = 150  # Spacing between circuits
         self.output_spacing = 80  # Spacing between pump outputs
         self.component_spacing = 60  # Spacing between components
-        self.icon_size = 40  # Size of component icons
+
+
+        # Navigation state
+        self.drag_data = {"x": 0, "y": 0}
+        self.zoom_level = 1.0
+        self.min_zoom = 0.5
+        self.max_zoom = 3.0
+        self.canvas_width = 0
+        self.canvas_height = 0
 
         # Connection routing
         self.connection_segments = []  # Store all connection segments for overlap detection
@@ -48,6 +57,51 @@ class Synthesis(ctk.CTkFrame):
         self.control_panel.pack(fill="x", pady=(0, 10))
         self.control_panel.pack_propagate(False)
 
+        # Navigation controls
+        self.nav_frame = ctk.CTkFrame(self.control_panel)
+        self.nav_frame.pack(side="left", padx=10)
+        
+        # Zoom controls
+        self.zoom_out_btn = CustomButton(
+            master=self.nav_frame,
+            text="",
+            font=self.controller.fonts.get("default", None),
+            width=30,
+            height=30,
+            command=self.zoom_out,
+            outlined=True,
+            icon_path="assets/icons/minus.png",
+        )
+        self.zoom_out_btn.pack(side="left", padx=2)
+        
+        self.zoom_label = ctk.CTkLabel(
+            self.nav_frame,
+            text="100%",
+            font=("Arial", 12)
+        )
+        self.zoom_label.pack(side="left", padx=5)
+        
+        self.zoom_in_btn = CustomButton(
+            master=self.nav_frame,
+            text="",
+            font=self.controller.fonts.get("default", None),
+            width=30,
+            height=30,
+            command=self.zoom_in,
+            outlined=True,
+            icon_path="assets/icons/add.png",
+        )
+        self.zoom_in_btn.pack(side="left", padx=2)
+        
+        # Reset view button
+        self.reset_view_btn = CustomButton(
+            master=self.nav_frame,
+            text="Reset View",
+            font=controller.fonts.get("default", None),
+            command=self.reset_view
+        )
+        self.reset_view_btn.pack(side="left", padx=10)
+
         # Download button
         self.download_btn = CustomButton(
             master=self.control_panel,
@@ -60,12 +114,195 @@ class Synthesis(ctk.CTkFrame):
         )
         self.download_btn.pack(side="right", padx=10)
 
-        # Canvas
-        self.canvas = tk.Canvas(self.main_container, bg="white", highlightthickness=0)
-        self.canvas.pack(fill="both", expand=True)
+        # Create canvas with scrollbars
+        self.canvas_frame = ctk.CTkFrame(self.main_container)
+        self.canvas_frame.pack(fill="both", expand=True)
+        
+        # Canvas with scrollbars
+        self.canvas = tk.Canvas(
+            self.canvas_frame, 
+            bg="white", 
+            highlightthickness=0,
+            scrollregion=(0, 0, 2000, 2000)  # Large scroll region
+        )
+        
+        # Scrollbars
+        self.h_scrollbar = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
+        self.v_scrollbar = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=self.h_scrollbar.set, yscrollcommand=self.v_scrollbar.set)
+        
+        # Grid layout for canvas and scrollbars
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.h_scrollbar.grid(row=1, column=0, sticky="ew")
+        self.v_scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        # Configure grid weights
+        self.canvas_frame.grid_rowconfigure(0, weight=1)
+        self.canvas_frame.grid_columnconfigure(0, weight=1)
+        
+        # Bind navigation events
+        self._bind_navigation_events()
         
         # Draw the circuit when initialized
         self.canvas.after(100, self.draw_circuit)
+
+    def _bind_navigation_events(self):
+        """Bind mouse events for navigation"""
+        # Mouse wheel for zooming
+        self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
+        self.canvas.bind("<Button-4>", self.on_mouse_wheel)  # Linux
+        self.canvas.bind("<Button-5>", self.on_mouse_wheel)  # Linux
+        
+        # Click and drag for panning
+        self.canvas.bind("<ButtonPress-1>", self.on_drag_start)
+        self.canvas.bind("<B1-Motion>", self.on_drag_motion)
+        self.canvas.bind("<ButtonRelease-1>", self.on_drag_end)
+        
+        # Middle mouse button for panning (alternative)
+        self.canvas.bind("<ButtonPress-2>", self.on_drag_start)
+        self.canvas.bind("<B2-Motion>", self.on_drag_motion)
+        self.canvas.bind("<ButtonRelease-2>", self.on_drag_end)
+        
+        # Keyboard shortcuts
+        self.canvas.bind("<Control-Key-0>", lambda e: self.reset_view())
+        self.canvas.bind("<Control-Key-plus>", lambda e: self.zoom_in())
+        self.canvas.bind("<Control-Key-minus>", lambda e: self.zoom_out())
+        
+        # Make canvas focusable for keyboard events
+        self.canvas.configure(highlightthickness=1)
+        self.canvas.bind("<Button-1>", lambda e: self.canvas.focus_set())
+
+    def on_mouse_wheel(self, event):
+        """Handle mouse wheel events for zooming and scrolling"""
+        # Check if Ctrl is pressed for zooming
+        if event.state & 0x4:  # Ctrl key
+            # Zoom with mouse wheel
+            if event.delta > 0 or event.num == 4:
+                self.zoom_in(event.x, event.y)
+            else:
+                self.zoom_out(event.x, event.y)
+        else:
+            # Scroll with mouse wheel
+            if event.state & 0x1:  # Shift key for horizontal scroll
+                self.canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                # Vertical scroll
+                if hasattr(event, 'delta'):  # Windows
+                    self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                else:  # Linux
+                    if event.num == 4:
+                        self.canvas.yview_scroll(-1, "units")
+                    elif event.num == 5:
+                        self.canvas.yview_scroll(1, "units")
+
+    def on_drag_start(self, event):
+        """Start dragging operation"""
+        self.drag_data["x"] = event.x
+        self.drag_data["y"] = event.y
+        self.canvas.configure(cursor="hand2")
+
+    def on_drag_motion(self, event):
+        """Handle drag motion for panning"""
+        # Calculate movement
+        dx = event.x - self.drag_data["x"]
+        dy = event.y - self.drag_data["y"]
+        
+        # Convert to scroll units
+        scroll_x = -dx / self.zoom_level
+        scroll_y = -dy / self.zoom_level
+        
+        # Update canvas view
+        self.canvas.xview_scroll(int(scroll_x), "units")
+        self.canvas.yview_scroll(int(scroll_y), "units")
+        
+        # Update drag position
+        self.drag_data["x"] = event.x
+        self.drag_data["y"] = event.y
+
+    def on_drag_end(self, event):
+        """End dragging operation"""
+        self.canvas.configure(cursor="")
+
+    def zoom_in(self, center_x=None, center_y=None):
+        """Zoom in the canvas"""
+        if self.zoom_level < self.max_zoom:
+            old_zoom = self.zoom_level
+            self.zoom_level = min(self.max_zoom, self.zoom_level * 1.2)
+            self._apply_zoom(old_zoom, center_x, center_y)
+
+    def zoom_out(self, center_x=None, center_y=None):
+        """Zoom out the canvas"""
+        if self.zoom_level > self.min_zoom:
+            old_zoom = self.zoom_level
+            self.zoom_level = max(self.min_zoom, self.zoom_level / 1.2)
+            self._apply_zoom(old_zoom, center_x, center_y)
+
+    def _apply_zoom(self, old_zoom, center_x=None, center_y=None):
+        """Apply zoom transformation to canvas"""
+        # Update zoom label
+        self.zoom_label.configure(text=f"{int(self.zoom_level * 100)}%")
+        
+        # Scale all canvas items
+        scale_factor = self.zoom_level / old_zoom
+        
+        # If center point provided, zoom towards that point
+        if center_x is not None and center_y is not None:
+            # Convert screen coordinates to canvas coordinates
+            canvas_x = self.canvas.canvasx(center_x)
+            canvas_y = self.canvas.canvasy(center_y)
+            
+            # Scale around the center point
+            self.canvas.scale("all", canvas_x, canvas_y, scale_factor, scale_factor)
+        else:
+            # Scale from canvas center
+            canvas_center_x = self.canvas.winfo_width() / 2
+            canvas_center_y = self.canvas.winfo_height() / 2
+            self.canvas.scale("all", canvas_center_x, canvas_center_y, scale_factor, scale_factor)
+        
+        # Update scroll region
+        self._update_scroll_region()
+
+    def _update_scroll_region(self):
+        """Update the scroll region based on current content"""
+        self.canvas.update_idletasks()
+        bbox = self.canvas.bbox("all")
+        if bbox:
+            # Add some padding
+            padding = 100
+            scroll_region = (
+                bbox[0] - padding,
+                bbox[1] - padding,
+                bbox[2] + padding,
+                bbox[3] + padding
+            )
+            self.canvas.configure(scrollregion=scroll_region)
+
+    def reset_view(self):
+        """Reset zoom and position to default"""
+        self.zoom_level = 1.0
+        self.zoom_label.configure(text="100%")
+        
+        # Redraw the circuit to reset all transformations
+        self.draw_circuit()
+        
+        # Center the view
+        self.canvas.update_idletasks()
+        bbox = self.canvas.bbox("all")
+        if bbox:
+            # Calculate center position
+            canvas_width = self.canvas.winfo_width()
+            canvas_height = self.canvas.winfo_height()
+            content_width = bbox[2] - bbox[0]
+            content_height = bbox[3] - bbox[1]
+            
+            # Center horizontally and vertically
+            center_x = (canvas_width - content_width) / 2 - bbox[0]
+            center_y = (canvas_height - content_height) / 2 - bbox[1]
+            
+            # Move all items to center
+            self.canvas.move("all", center_x, center_y)
+            
+        self._update_scroll_region()
 
     def _load_icons(self):
         """Load all component icons"""
@@ -137,6 +374,9 @@ class Synthesis(ctk.CTkFrame):
                     current_y
                 )
                 current_y += circuit_height + self.vertical_spacing
+        
+        # Update scroll region after drawing
+        self._update_scroll_region()
 
     def _draw_pump_circuit(self, pump_data, circuit, start_y):
         """Draw a single pump circuit with clean layout"""

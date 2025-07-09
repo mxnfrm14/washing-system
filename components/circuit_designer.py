@@ -382,22 +382,19 @@ class CircuitDesigner(ctk.CTkFrame):
             print(f"Component type '{comp_type}' not defined in properties")
             return
         
-        # Get canvas dimensions
+        # Get canvas dimensions and constrain position
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        
-        # Get component size for boundary calculation
         comp_size = self.component_properties.get(comp_type, {}).get('size', (30, 30))
         half_width = comp_size[0] // 2
         half_height = comp_size[1] // 2
         
         # Constrain position within canvas boundaries
-        min_x = half_width + 5  # 5px padding from edge
+        min_x = half_width + 5
         max_x = canvas_width - half_width - 5
         min_y = half_height + 5
-        max_y = canvas_height - half_height - 60  # Extra space for label
+        max_y = canvas_height - half_height - 60
         
-        # Apply constraints to placement position
         x = max(min_x, min(x, max_x))
         y = max(min_y, min(y, max_y))
         
@@ -407,10 +404,8 @@ class CircuitDesigner(ctk.CTkFrame):
         
         if not icon:
             print(f"No icon loaded for {comp_type} - creating placeholder shape")
-            # Create a placeholder shape based on component type
             item_id = self._create_placeholder_shape(x, y, comp_type)
         else:
-            # Create image on canvas
             item_id = self.canvas.create_image(
                 x, y,
                 image=icon,
@@ -418,16 +413,18 @@ class CircuitDesigner(ctk.CTkFrame):
                 tags=("component", comp_type)
             )
         
-        # Create label
-        props = self.component_properties.get(comp_type, {})
+        # FIXED: Separate original name from display name
+        original_name = component.get('name', comp_type)  # Original name without suffixes
+        display_name = component.get('display_name', original_name)  # Display name with suffixes
         
-        # For pumps, use the outputs from component data if available
+        # Create label using display name for UI
+        props = self.component_properties.get(comp_type, {})
         if comp_type == "pump" and component.get("max_connections"):
             max_connections = component.get("max_connections")
         else:
             max_connections = props.get('max_connections', 0)
-            
-        label_text = f"{component.get('name', comp_type)}\n0/{max_connections}"
+                
+        label_text = f"{display_name}\n0/{max_connections}"  # Use display name in UI
         label_id = self.canvas.create_text(
             x, y + 30,
             text=label_text,
@@ -436,12 +433,12 @@ class CircuitDesigner(ctk.CTkFrame):
             tags=("label",)
         )
         
-        # Store component data
+        # FIXED: Store component data with original name for saving
         self.placed_items[item_id] = {
             'type': comp_type,
-            'id': component.get('id', ''),  # Store unique ID
-            'name': component.get('name', comp_type),
-            'display_name': component.get('display_name', component.get('name', comp_type)),  # Store display name
+            'id': component.get('id', ''),
+            'name': original_name,  # ← Store original name for saving (no suffixes)
+            'display_name': display_name,  # Store display name for UI
             'coords': (x, y),
             'label_id': label_id,
             'current_connections': 0,
@@ -453,8 +450,6 @@ class CircuitDesigner(ctk.CTkFrame):
         # Bring to front
         self.canvas.tag_raise(item_id)
         self.canvas.tag_raise(label_id)
-        
-        # Keep reset button on top
         self.canvas.tag_raise("reset_button")
         
         print(f"Placed {comp_type} at ({x}, {y})")
@@ -463,11 +458,9 @@ class CircuitDesigner(ctk.CTkFrame):
         if comp_type in ["pump", "component"]:
             component_id = component.get('id', component.get('name', comp_type))
             
-            # If we have a circuits controller, use it to sync all tabs
             if self.circuits_controller and hasattr(self.circuits_controller, '_on_component_placement'):
                 self.circuits_controller._on_component_placement(component_id, placed=True)
-                self.set_mode({"mode": "move", "component": None})  # Switch back to move mode
-            # Otherwise, just update local detail list
+                self.set_mode({"mode": "move", "component": None})
             elif self.detail_list:
                 self.detail_list.mark_component_placed(component_id)
     
@@ -1004,28 +997,45 @@ class CircuitDesigner(ctk.CTkFrame):
         return placed
     
     def get_circuit_data(self):
-        """Get circuit data for saving"""
+        """Get circuit data for saving - use original names without suffixes"""
+        components_data = []
+        connections_data = []
+        
+        # FIXED: Save components with original names
+        for item_id, data in self.placed_items.items():
+            component_info = {
+                'id': item_id,  # Canvas item ID (integer)
+                'type': data['type'],
+                'name': data['name'],  # ← Use original name (no suffixes)
+                'position': list(data['coords']),
+                'connections': data['current_connections']
+            }
+            components_data.append(component_info)
+        
+        # FIXED: Save connections with original names
+        for conn in self.connectors:
+            # Get original names from placed_items
+            from_name = conn.get('from_name', '')
+            to_name = conn.get('to_name', '')
+            
+            if conn['from_id'] in self.placed_items:
+                from_name = self.placed_items[conn['from_id']]['name']  # Original name
+            
+            if conn['to_id'] in self.placed_items:
+                to_name = self.placed_items[conn['to_id']]['name']  # Original name
+            
+            connection_info = {
+                'from': conn['from_id'],
+                'to': conn['to_id'], 
+                'from_name': from_name,
+                'to_name': to_name,
+                'parameters': conn.get('parameters', {})
+            }
+            connections_data.append(connection_info)
+        
         return {
-            'components': [
-                {
-                    'id': item_id,
-                    'type': data['type'],
-                    'name': data['name'],
-                    'position': data['coords'],
-                    'connections': data['current_connections']
-                }
-                for item_id, data in self.placed_items.items()
-            ],
-            'connections': [
-                {
-                    'from': conn['from_id'],
-                    'to': conn['to_id'],
-                    'from_name': conn.get('from_name', ''),
-                    'to_name': conn.get('to_name', ''),
-                    'parameters': conn.get('parameters', {})
-                }
-                for conn in self.connectors
-            ]
+            'components': components_data,
+            'connections': connections_data
         }
     
     def update_appearance(self, mode=None):
