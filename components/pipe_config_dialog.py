@@ -50,8 +50,8 @@ class PipeConfigDialog(ctk.CTkToplevel):
         self.update_appearance()
         
         # Focus on first input
-        self.diameter_entry.focus()
-
+        self.diameter_dropdown.focus()
+    
     def _create_ui(self):
         """Create the dialog UI"""
         # Main container
@@ -89,7 +89,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
         # Diameter
         self._create_field(
             row, "Diameter (mm)",
-            self._create_diameter_entry()
+            self._create_diameter_dropdown()
         )
         row += 1
         
@@ -166,18 +166,21 @@ class PipeConfigDialog(ctk.CTkToplevel):
         if "Bend Radius" in label_text:
             self.bend_radius_label = label
     
-    def _create_diameter_entry(self):
-        """Create diameter entry field (replaces dropdown)"""
-        self.diameter_var = ctk.StringVar()
-        entry = ctk.CTkEntry(
+    def _create_diameter_dropdown(self):
+        """Create diameter dropdown field"""
+        self.diameter_var = ctk.StringVar(value="Select diameter")
+        # For now, use random values - later to be replaced with database values
+        diameter_options = ["25", "32", "40", "50", "65", "80", "100", "125", "150", "200"]
+        dropdown = ctk.CTkOptionMenu(
             self.form_frame,
-            textvariable=self.diameter_var,
-            placeholder_text="Enter diameter",
+            variable=self.diameter_var,
+            values=diameter_options,
             font=self.controller.fonts.get("default", None),
+            dropdown_font=self.controller.fonts.get("default", None),
             width=250
         )
-        self.diameter_entry = entry
-        return entry
+        self.diameter_dropdown = dropdown
+        return dropdown
     
     def _create_type_dropdown(self):
         """Create pipe type dropdown"""
@@ -280,8 +283,8 @@ class PipeConfigDialog(ctk.CTkToplevel):
             text="Bent",
             font=self.controller.fonts.get("default", None),
             command=lambda: self._set_inclination("bent"),
-            fg_color="transparent",
-            text_color="#243783",
+            fg_color="#243783",
+            text_color="white",
             width=100
         )
         self.bent_button.pack(side="left")
@@ -291,7 +294,8 @@ class PipeConfigDialog(ctk.CTkToplevel):
     def _create_bend_radius_field(self):
         """Create bend radius field with unit dropdown"""
         frame = ctk.CTkFrame(self.form_frame, fg_color="transparent")
-        
+        frame.grid_columnconfigure(0, weight=0, minsize=160)
+        frame.grid_columnconfigure(1, weight=0, minsize=80)
         # Entry
         self.bend_radius_var = ctk.StringVar()
         entry = ctk.CTkEntry(
@@ -301,7 +305,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
             font=self.controller.fonts.get("default", None),
             width=160
         )
-        entry.pack(side="left", padx=(0, 10))
+        entry.grid(row=0, column=0)
         
         # Unit dropdown
         self.bend_radius_unit_var = ctk.StringVar(value="mm")
@@ -313,7 +317,17 @@ class PipeConfigDialog(ctk.CTkToplevel):
             dropdown_font=self.controller.fonts.get("default", None),
             width=80
         )
-        unit_dropdown.pack(side="left")
+        unit_dropdown.grid(row=0, column=1, padx=(10, 0))
+
+        # Minimum value indication
+        min_label = ctk.CTkLabel(
+            frame,
+            text="Min: 1 mm",
+            font=self.controller.fonts.get("default", None),
+            text_color='white',
+            anchor="w"
+        )
+        min_label.grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky="ew")
         
         return frame
     
@@ -324,12 +338,12 @@ class PipeConfigDialog(ctk.CTkToplevel):
         # Update button styles
         if value == "straight":
             self.straight_button.configure(fg_color="#243783", text_color="white")
-            self.bent_button.configure(fg_color="transparent", text_color="#243783")
+            self.bent_button.configure(fg_color="transparent", text_color="white")
             # Hide bend radius
             self.bend_radius_label.grid_forget()
             self.bend_radius_frame.grid_forget()
         else:
-            self.straight_button.configure(fg_color="transparent", text_color="#243783")
+            self.straight_button.configure(fg_color="transparent", text_color="white")
             self.bent_button.configure(fg_color="#243783", text_color="white")
             # Show bend radius
             self.bend_radius_label.grid(row=5, column=0, sticky="w", pady=8, padx=(0, 10))
@@ -368,10 +382,10 @@ class PipeConfigDialog(ctk.CTkToplevel):
         
         params = self.edit_data.get('parameters', {})
         
-        # Set values from saved data
-        diameter_str = str(params.get('diameter', ''))
-        self.diameter_var.set(diameter_str)
-        
+        diameter_value = params.get('diameter', '')
+        if diameter_value:
+            self.diameter_var.set(str(diameter_value))
+    
         self.type_var.set(params.get('type', 'Placeholder'))
         self._on_type_change(params.get('type', ''))
         
@@ -408,17 +422,17 @@ class PipeConfigDialog(ctk.CTkToplevel):
     def save(self):
         """Save the pipe configuration"""
         # Validate inputs
-        if not self.diameter_var.get():
-            self._show_error("Please enter a diameter")
+        if self.diameter_var.get() == "Select diameter":
+            self._show_error("Please select a diameter")
             return
-        
+            
         try:
             diameter = float(self.diameter_var.get())
             if diameter <= 0:
                 self._show_error("Diameter must be positive")
                 return
         except ValueError:
-            self._show_error("Please enter a valid diameter")
+            self._show_error("Please select a valid diameter")
             return
         
         if self.type_var.get() == "Placeholder":

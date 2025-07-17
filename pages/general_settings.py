@@ -101,7 +101,7 @@ class GeneralSettings(ctk.CTkFrame):
 
         self.vehicle_label = ctk.CTkLabel(
             self.form_container, 
-            text="Vehicle", 
+            text="Vehicle Project", 
             font=controller.fonts.get("default", None),
             anchor="w"
         )
@@ -109,7 +109,7 @@ class GeneralSettings(ctk.CTkFrame):
 
         self.vehicle_entry = ctk.CTkEntry(
             self.form_container,
-            placeholder_text="Vehicle",
+            placeholder_text="Vehicle Project Name",
             font=controller.fonts.get("default", None),
             width=230
         )
@@ -200,7 +200,7 @@ class GeneralSettings(ctk.CTkFrame):
         # Row 3: Liquid Volume
         self.liquid_volume_label = ctk.CTkLabel(
             self.form_container, 
-            text="Liquid Volume", 
+            text="Liquid Volume (Tank)", 
             font=controller.fonts.get("default", None),
             anchor="w"
         )

@@ -655,14 +655,14 @@ class Circuits(ctk.CTkFrame):
             self.synthesis_content = None
             print("Synthesis tab disabled - circuit is not completed")
     
-    def _on_component_placement(self, component_name, placed=True):
+    def _on_component_placement(self, component_id, placed=True):
         """Handle component placement/removal across all tabs and update synthesis"""
         # Update all detail lists
         for detail_list in self.detail_lists:
             if placed:
-                detail_list.mark_component_placed(component_name)
+                detail_list.mark_component_placed(component_id)
             else:
-                detail_list.mark_component_available(component_name)
+                detail_list.mark_component_available(component_id)
         
         # Update synthesis tab based on new completion status
         self._update_synthesis_tab()
@@ -950,6 +950,7 @@ class Circuits(ctk.CTkFrame):
         
         # Phase 1: Place all components
         id_mapping = {}  # Map saved canvas IDs to new canvas IDs
+        placed_component_ids = []  # Track component IDs that were placed
         
         for comp_data in components:
             comp_name = comp_data.get('name', 'Unknown')
@@ -972,6 +973,12 @@ class Circuits(ctk.CTkFrame):
                 if new_canvas_id:
                     id_mapping[saved_canvas_id] = new_canvas_id
                     print(f"      ✅ Placed {comp_name} -> canvas ID {new_canvas_id}")
+                    
+                    # Track placed components for detail list updates (only pumps and components)
+                    if comp_type in ['pump', 'component']:
+                        actual_component_id = component_info.get('id')
+                        if actual_component_id:
+                            placed_component_ids.append(actual_component_id)
                 else:
                     print(f"      ❌ Could not find placed component: {comp_name}")
                     # Debug: show all placed items
@@ -1000,6 +1007,13 @@ class Circuits(ctk.CTkFrame):
                 print(f"          From ID {saved_from_id} mapped to {new_from_id}")
                 print(f"          To ID {saved_to_id} mapped to {new_to_id}")
                 print(f"          Available mappings: {id_mapping}")
+        
+        # Phase 3: Update detail lists to reflect placed components
+        print(f"    📋 Updating detail lists for {len(placed_component_ids)} placed components...")
+        for component_id in placed_component_ids:
+            # Notify all detail lists that this component has been placed
+            self._on_component_placement(component_id, placed=True)
+            print(f"      ✅ Marked component {component_id} as placed in detail lists")
 
     def _find_component_config(self, comp_name, comp_type):
         """Find component configuration data using original names"""

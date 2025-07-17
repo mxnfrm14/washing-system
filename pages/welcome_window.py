@@ -37,7 +37,7 @@ class WelcomeWindow(ctk.CTk):
         # Load Config Button
         self.load_config_button = CustomButton(
             master=self.button_frame,
-            text="Charger la configuration",
+            text="Load Configuration",
             font=ctk.CTkFont(family="Encode Sans Expanded", size=14),
             icon_path="assets/icons/upload.png",
             icon_side="left",
@@ -49,7 +49,7 @@ class WelcomeWindow(ctk.CTk):
         # New Config Button
         self.new_config_button = CustomButton(
             master=self.button_frame,
-            text="Nouvelle configuration",
+            text="New Configuration",
             font=ctk.CTkFont(family="Encode Sans Expanded", size=14),
             icon_path="assets/icons/add.png",
             icon_side="left",

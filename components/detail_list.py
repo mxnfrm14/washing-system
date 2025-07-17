@@ -191,6 +191,8 @@ class DetailList(ctk.CTkFrame):
             if 'display_name' not in component:
                 component['display_name'] = component.get('name', 'Unknown')
             
+            print(f"DetailList: Creating button for component {component.get('name', 'Unknown')} with ID {component.get('id', 'unknown')}")
+            
             comp_button = ctk.CTkButton(
                 self.main_container,
                 text=component.get('display_name', 'Unknown'),
@@ -387,6 +389,9 @@ class DetailList(ctk.CTkFrame):
     
     def mark_component_placed(self, component_id):
         """Mark a component as placed and disable its button using unique ID"""
+        print(f"DetailList: mark_component_placed called with ID: {component_id}")
+        print(f"DetailList: Available component IDs: {list(self.component_buttons_map.keys())}")
+        
         if component_id in self.component_buttons_map:
             self.placed_components.add(component_id)
             button = self.component_buttons_map[component_id]
@@ -397,10 +402,14 @@ class DetailList(ctk.CTkFrame):
                 text_color="gray40",
                 hover_color="gray70"
             )
-            print(f"Component {component_id} marked as placed")
+            print(f"✅ Component {component_id} marked as placed")
+        else:
+            print(f"❌ Component {component_id} not found in button map")
     
     def mark_component_available(self, component_id):
         """Mark a component as available and enable its button using unique ID"""
+        print(f"DetailList: mark_component_available called with ID: {component_id}")
+        
         if component_id in self.placed_components:
             self.placed_components.remove(component_id)
         
@@ -414,7 +423,9 @@ class DetailList(ctk.CTkFrame):
                 text_color=colors['text_color'],
                 hover_color=colors['hover_color']
             )
-            print(f"Component {component_id} marked as available")
+            print(f"✅ Component {component_id} marked as available")
+        else:
+            print(f"❌ Component {component_id} not found in button map")
     
     def reset_all_components(self):
         """Reset all components to available state"""

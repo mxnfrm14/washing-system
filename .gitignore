@@ -73,3 +73,6 @@ dmypy.json
 
 # Environment virtuel python
 washingsystem/
+
+# private data
+data/

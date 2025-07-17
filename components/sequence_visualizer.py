@@ -438,7 +438,7 @@ class SequenceVisualizer(ctk.CTkFrame):
             label_format = "{:.0f}ms"
             label_multiplier = 1000
         elif total_duration <= 1:  # 1s or less
-            tick_interval = 0.1  # 100ms ticks
+            tick_interval = 0.2  # 200ms ticks
             label_format = "{:.0f}ms"
             label_multiplier = 1000
         elif total_duration <= 10:

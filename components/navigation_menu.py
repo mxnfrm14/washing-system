@@ -144,6 +144,23 @@ class NavigationMenu(ctk.CTkFrame):
                     # If page is not current and not completed, ensure it's inactive
                     elif page_index != index:
                         self.indicators[page_index].set_inactive()
+    
+    def refresh_all_completion_status(self):
+        """Refresh all indicators based on current completion status from controller"""
+        if not hasattr(self.controller, 'completed_pages'):
+            return
+        
+        # Update all indicators based on controller's completed_pages
+        for page_name, (_, page_index) in self.pages.items():
+            if page_name in self.controller.completed_pages:
+                self.indicators[page_index].set_completed()
+                print(f"Navigation menu: Page {page_name} set as completed")
+            else:
+                # If this is the current page, set it as active, otherwise inactive
+                if page_name == self.current_page:
+                    self.indicators[page_index].set_active()
+                else:
+                    self.indicators[page_index].set_inactive()
 
     def update_appearance(self, appearance_mode):
         """Update the appearance of the navigation frame based on the appearance mode"""

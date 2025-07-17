@@ -75,6 +75,13 @@ class MainController:
     def _show_main_app(self):
         """Creates and displays the main application window."""
         self.main_app = App(self)  # Pass this controller to the App
+        
+        # Update page completion status after main app is initialized
+        self._update_page_completion_status_after_load()
+        
+        # Show the first page to ensure proper navigation state
+        self.show_page("general_settings")
+        
         self.main_app.mainloop()
 
     # --- Page & Data Management Methods (Previously in PageController) ---
@@ -163,11 +170,13 @@ class MainController:
     def save_whole_configuration(self):
         """Saves the entire configuration data object to a JSON file."""
         self.save_current_page_config() # Ensure current page is saved
+        self.config_file = self.config_data["general_settings"].get("vehicle", "washing_system_config.json")
         try:
             filepath = ctk.filedialog.asksaveasfilename(
                 defaultextension=".json",
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                title="Save Configuration As..."
+                title="Save Configuration As...",
+                initialfile= self.config_file
             )
             if not filepath:
                 return False # User cancelled
@@ -197,6 +206,9 @@ class MainController:
                     for key, value in self._get_initial_config_data().items():
                         self.config_data.setdefault(key, value)
                     print(f"Configuration loaded from {filename}")
+                    
+                    # Check completion status of all pages after loading
+                    self._update_page_completion_status_after_load()
                     return True
         except Exception as e:
             print(f"Error loading configuration from file: {e}")
@@ -260,3 +272,47 @@ class MainController:
     def is_page_completed(self, page_name):
         """Check if a page is marked as completed"""
         return page_name in self.completed_pages
+    
+    def _update_page_completion_status_after_load(self):
+        """Check and update completion status of all pages after loading configuration"""
+        # Only proceed if pages exist (main app has been created)
+        if not self.pages:
+            return
+        
+        # Clear existing completion status
+        self.completed_pages.clear()
+        
+        # Check each page for completion based on loaded configuration
+        for page_name, page in self.pages.items():
+            if hasattr(page, 'is_completed'):
+                try:
+                    # Load configuration data into the page first
+                    if hasattr(page, 'load_configuration'):
+                        page.load_configuration(self.config_data)
+                    
+                    # Check if the page is now completed
+                    if page.is_completed():
+                        self.completed_pages.add(page_name)
+                        print(f"Page {page_name} marked as completed after configuration load")
+                except Exception as e:
+                    print(f"Error checking completion status for {page_name}: {e}")
+        
+        # Update navigation menu to reflect completion status
+        if self.navigation_menu:
+            self._refresh_navigation_menu_completion()
+    
+    def _refresh_navigation_menu_completion(self):
+        """Refresh the navigation menu to show current completion status"""
+        if not self.navigation_menu:
+            return
+        
+        # Use the new method to refresh all completion statuses
+        if hasattr(self.navigation_menu, 'refresh_all_completion_status'):
+            self.navigation_menu.refresh_all_completion_status()
+        else:
+            # Fallback to individual updates for backward compatibility
+            for page_name in self.pages.keys():
+                if page_name in self.completed_pages:
+                    self.navigation_menu.update_completion_status(page_name)
+                else:
+                    self.navigation_menu.update_incomplete_status(page_name)

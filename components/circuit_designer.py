@@ -349,7 +349,7 @@ class CircuitDesigner(ctk.CTkFrame):
         return None
     
     def place_component(self, x, y, component):
-        """Place a component on the canvas with boundary constraints"""
+        """Place a component on the canvas with improved boundary handling for restoration"""
         # Determine component type
         comp_type = None
         
@@ -382,21 +382,50 @@ class CircuitDesigner(ctk.CTkFrame):
             print(f"Component type '{comp_type}' not defined in properties")
             return
         
-        # Get canvas dimensions and constrain position
+        # Get canvas dimensions with fallback for uninitialized canvas
+        self.canvas.update_idletasks()
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
+        
+        # Handle case where canvas is not yet properly sized
+        if canvas_width <= 1 or canvas_height <= 1:
+            print(f"⚠️ Canvas not properly sized ({canvas_width}x{canvas_height}), using default size")
+            canvas_width = 800  # Default width
+            canvas_height = 600  # Default height
+            # Try to configure canvas size
+            self.canvas.configure(width=canvas_width, height=canvas_height)
+            self.canvas.update_idletasks()
+        
         comp_size = self.component_properties.get(comp_type, {}).get('size', (30, 30))
         half_width = comp_size[0] // 2
         half_height = comp_size[1] // 2
         
-        # Constrain position within canvas boundaries
-        min_x = half_width + 5
-        max_x = canvas_width - half_width - 5
-        min_y = half_height + 5
-        max_y = canvas_height - half_height - 60
+        # Constrain position within canvas boundaries with more generous margins
+        min_x = half_width + 10
+        max_x = canvas_width - half_width - 10
+        min_y = half_height + 10
+        max_y = canvas_height - half_height - 70  # Extra space for labels
         
-        x = max(min_x, min(x, max_x))
-        y = max(min_y, min(y, max_y))
+        # Ensure boundaries are valid (for very small canvases)
+        if max_x <= min_x:
+            max_x = max(canvas_width - 10, min_x + 50)
+        if max_y <= min_y:
+            max_y = max(canvas_height - 10, min_y + 50)
+        
+        # Apply constraints only if canvas is reasonably sized
+        if canvas_width > 100 and canvas_height > 100:
+            original_x, original_y = x, y
+            x = max(min_x, min(x, max_x))
+            y = max(min_y, min(y, max_y))
+            
+            # Log significant position adjustments
+            if abs(x - original_x) > 10 or abs(y - original_y) > 10:
+                print(f"🔄 Position adjusted from ({original_x}, {original_y}) to ({x}, {y}) for canvas {canvas_width}x{canvas_height}")
+        else:
+            # For very small canvases, just ensure minimum distance from edges
+            x = max(50, x)
+            y = max(50, y)
+            print(f"📍 Canvas too small, placing at ({x}, {y}) without constraints")
         
         # Get icon
         mode = ctk.get_appearance_mode().lower()
@@ -452,7 +481,7 @@ class CircuitDesigner(ctk.CTkFrame):
         self.canvas.tag_raise(label_id)
         self.canvas.tag_raise("reset_button")
         
-        print(f"Placed {comp_type} at ({x}, {y})")
+        print(f"Placed {comp_type} '{original_name}' at ({x}, {y}) on canvas {canvas_width}x{canvas_height}")
         
         # Notify about component placement (only for pumps and components, not connectors)
         if comp_type in ["pump", "component"]:
@@ -463,7 +492,8 @@ class CircuitDesigner(ctk.CTkFrame):
                 self.set_mode({"mode": "move", "component": None})
             elif self.detail_list:
                 self.detail_list.mark_component_placed(component_id)
-    
+
+
     def _create_placeholder_shape(self, x, y, comp_type):
         """Create a placeholder shape when icon is not available"""
         size = 20  # Default size

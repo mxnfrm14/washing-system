@@ -643,7 +643,8 @@ class Synthesis(ctk.CTkFrame):
             filename = filedialog.asksaveasfilename(
                 defaultextension=".png",
                 filetypes=[("PNG files", "*.png"), ("All files", "*.*")],
-                title="Save Circuit Image"
+                title="Save Circuit Image",
+                initialfile= self.controller.config_data["general_settings"].get("vehicle", "circuit_image.png")
             )
             
             if filename:
