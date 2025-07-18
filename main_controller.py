@@ -6,6 +6,7 @@ import uuid
 
 from pages.welcome_window import WelcomeWindow
 from app import App
+from utils.data_manager import DataManager
 
 class MainController:
     """
@@ -32,6 +33,9 @@ class MainController:
         # The single source of truth for all configuration data
         self.config_data = self._get_initial_config_data()
         self.config_file = "washing_system_config.json"
+
+        # --- Data Management ---
+        self.data_manager = DataManager()
 
     def _get_initial_config_data(self):
         """Returns the default empty structure for the application's configuration data."""

@@ -3,6 +3,7 @@ from typing import Dict, Any, Callable, Optional
 from components.custom_button import CustomButton
 from utils.appearance_manager import AppearanceManager
 from utils.open_image import open_icon
+from utils.data_manager import DataManager
 
 class ComponentConfigDialog(ctk.CTkToplevel):
     """
@@ -185,10 +186,26 @@ class ComponentConfigDialog(ctk.CTkToplevel):
     def _create_component_dropdown(self):
         """Create component dropdown"""
         self.component_var = ctk.StringVar(value="Select component")
+        
+        # Get component data from DataManager
+        component_data = self.controller.data_manager.get_component_data()
+
+        # Extract component names for dropdown
+        component_names = []
+        if component_data:
+            for item in component_data:
+                name = item.get('Component Name')
+                if name:
+                    component_names.append(str(name))
+        
+        # Fallback to default values if no data found
+        if not component_names:
+            component_names = ["Component A", "Component B", "Component C", "Component D"]
+        
         dropdown = ctk.CTkOptionMenu(
             self.form_frame,
             variable=self.component_var,
-            values=["Component A", "Component B", "Component C", "Component D"],
+            values=component_names,
             font=self.controller.fonts.get("default", None),
             dropdown_font=self.controller.fonts.get("default", None),
             width=250

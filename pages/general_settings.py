@@ -89,9 +89,22 @@ class GeneralSettings(ctk.CTkFrame):
         )
         self.liquid_name_label.grid(row=0, column=0, sticky="w", pady=10)
 
+        # Get fluid data from DataManager
+        fluid_data = controller.data_manager.get_fluids_data()
+        fluid_names = []
+        if fluid_data:
+            for item in fluid_data:
+                name = item.get('LLG Name')
+                if name:
+                    fluid_names.append(str(name))
+        
+        # Fallback to default values if no data found
+        if not fluid_names:
+            fluid_names = ["Water", "Detergent", "Solvent"]
+        
         self.liquid_name_dropdown = ctk.CTkOptionMenu(
             self.form_container,
-            values=["Water", "Detergent", "Solvent"],
+            values=fluid_names,
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
             width=230
@@ -265,9 +278,22 @@ class GeneralSettings(ctk.CTkFrame):
         )
         self.dirt_type_label.grid(row=1, column=3, sticky="w", pady=10)
 
+        # Get dirt data from DataManager
+        dirt_data = controller.data_manager.get_dirt_data()
+        dirt_types = []
+        if dirt_data:
+            for item in dirt_data:
+                dirt_type = item.get('Dirt Type')
+                if dirt_type:
+                    dirt_types.append(str(dirt_type))
+        
+        # Fallback to default values if no data found
+        if not dirt_types:
+            dirt_types = ["Dirt", "Autre"]
+        
         self.dirt_type_dropdown = ctk.CTkOptionMenu(
             self.form_container,
-            values=["Dirt", "Autre"],
+            values=dirt_types,
             font=controller.fonts.get("default", None),
             dropdown_font=controller.fonts.get("default", None),
             width=230
