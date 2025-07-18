@@ -32,6 +32,12 @@ class DataManager:
         
         # Load washing components data
         self.data['washing_components'] = self.get_component_data()
+        self.data['pipes'] = self.get_pipes_data()
+        self.data['connectors'] = self.get_connectors_data()
+        self.data['dirt'] = self.get_dirt_data()
+        self.data['fluids'] = self.get_fluids_data()
+        self.data['bends'] = self.get_bends_data()
+
         
     def load_data(self, file_key: str) -> pd.DataFrame:
         if file_key not in self.excel_files:
@@ -72,19 +78,20 @@ class DataManager:
     def get_fluids_data(self):
         if self.data['fluids'] is None:
             data = self.load_data('fluids')
-            records = data.to_dict(orient='records')
-            
-            # Filter to get unique fluid names only
-            seen_names = set()
-            unique_fluids = []
-            for item in records:
-                name = item.get('LLG Name')
-                if name and name not in seen_names:
-                    seen_names.add(name)
-                    unique_fluids.append(item)
-            
-            self.data['fluids'] = unique_fluids
+            self.data['fluids'] = data.to_dict(orient='records')
         return self.data['fluids']
+    
+    def get_unique_fluid_names(self):
+        """Get unique fluid names for dropdown display"""
+        fluids = self.get_fluids_data()
+        seen_names = set()
+        unique_names = []
+        for item in fluids:
+            name = item.get('LLG Name')
+            if name and name not in seen_names:
+                seen_names.add(name)
+                unique_names.append(name)
+        return unique_names
     
     def get_bends_data(self):
         if self.data['bends'] is None:
@@ -110,7 +117,17 @@ if __name__ == "__main__":
         bends_df = data_manager.load_data('bends')
         print(bends_df.head())
     
-        print(data_manager.get_component_data())
-        print(data_manager.data)
+
+        print("\n=== DataManager Contents ===")
+        for key, value in data_manager.data.items():
+            print(f"\n{key.upper()}:")
+            if value:
+                print(f"  Records count: {len(value)}")
+            if len(value) > 0:
+                for i, record in enumerate(value):
+                    print(f"  Record {i+1}: {record}")
+            else:
+                print("  No data loaded")
+
     except Exception as e:
         print(f"Error loading data: {e}")

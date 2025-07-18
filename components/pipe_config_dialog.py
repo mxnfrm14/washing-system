@@ -39,6 +39,12 @@ class PipeConfigDialog(ctk.CTkToplevel):
         self.ref_number = "xxx-xxx-xxx"
         self.supplier_value = "xxxxxxxx"
         
+        # Get pipe data from DataManager
+        self.pipe_data = self.controller.data_manager.get_pipes_data()
+        
+        # Store filtered data
+        self.filtered_data = self.pipe_data.copy() if self.pipe_data else []
+        
         # Create UI
         self._create_ui()
         
@@ -138,7 +144,20 @@ class PipeConfigDialog(ctk.CTkToplevel):
         self.buttons_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.buttons_frame.pack(fill="x", pady=(30, 0))
         
-        # OK button (centered)
+        # Reset button (left)
+        self.reset_button = ctk.CTkButton(
+            self.buttons_frame,
+            text="Reset Selection",
+            font=self.controller.fonts.get("default", None),
+            command=self.reset_selection,
+            width=120,
+            fg_color="transparent",
+            border_width=1,
+            text_color=("gray10", "gray90")
+        )
+        self.reset_button.pack(side="left")
+        
+        # OK button (right)
         self.ok_button = ctk.CTkButton(
             self.buttons_frame,
             text="OK",
@@ -146,7 +165,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
             command=self.save,
             width=100
         )
-        self.ok_button.pack()
+        self.ok_button.pack(side="right")
     
     def _create_field(self, row: int, label_text: str, field_widget):
         """Create a field with label"""
@@ -169,31 +188,51 @@ class PipeConfigDialog(ctk.CTkToplevel):
     def _create_diameter_dropdown(self):
         """Create diameter dropdown field"""
         self.diameter_var = ctk.StringVar(value="Select diameter")
-        # For now, use random values - later to be replaced with database values
-        diameter_options = ["25", "32", "40", "50", "65", "80", "100", "125", "150", "200"]
+        
+        # Get unique diameters from pipe data
+        diameters = set()
+        for pipe in self.filtered_data:
+            diameter = pipe.get('Diam. (mm)')
+            if diameter is not None:
+                diameters.add(str(diameter))
+        
+        diameter_options = sorted(list(diameters), key=lambda x: float(x)) if diameters else ["No data"]
+        
         dropdown = ctk.CTkOptionMenu(
             self.form_frame,
             variable=self.diameter_var,
             values=diameter_options,
             font=self.controller.fonts.get("default", None),
             dropdown_font=self.controller.fonts.get("default", None),
-            width=250
+            width=250,
+            command=self._on_diameter_change
         )
         self.diameter_dropdown = dropdown
         return dropdown
     
     def _create_type_dropdown(self):
         """Create pipe type dropdown"""
-        self.type_var = ctk.StringVar(value="Placeholder")
+        self.type_var = ctk.StringVar(value="Select type")
+        
+        # Get unique pipe types from pipe data
+        pipe_types = set()
+        for pipe in self.filtered_data:
+            pipe_type = pipe.get('Pipe Type')
+            if pipe_type is not None:
+                pipe_types.add(str(pipe_type))
+        
+        type_options = sorted(list(pipe_types)) if pipe_types else ["No data"]
+        
         dropdown = ctk.CTkOptionMenu(
             self.form_frame,
             variable=self.type_var,
-            values=["Type A", "Type B", "Type C", "Type D"],
+            values=type_options,
             font=self.controller.fonts.get("default", None),
             dropdown_font=self.controller.fonts.get("default", None),
             width=250,
             command=self._on_type_change
         )
+        self.type_dropdown = dropdown
         return dropdown
     
     def _create_info_labels(self, row: int):
@@ -350,20 +389,110 @@ class PipeConfigDialog(ctk.CTkToplevel):
             self.bend_radius_frame.grid(row=5, column=1, sticky="ew", pady=8)
     
     def _on_type_change(self, value):
-        """Update ref and supplier based on type selection"""
-        # Simulate pipe data lookup
-        pipe_data = {
-            "Type A": {"ref": "PIP-001-A", "supplier": "FlowTech"},
-            "Type B": {"ref": "PIP-002-B", "supplier": "AquaPipe"},
-            "Type C": {"ref": "PIP-003-C", "supplier": "HydroSys"},
-            "Type D": {"ref": "PIP-004-D", "supplier": "PipeMax"}
-        }
+        """Update diameter options and ref/supplier based on type selection"""
+        if value == "Select type":
+            return
+            
+        # Filter pipe data by selected type
+        self.filtered_data = [pipe for pipe in self.pipe_data if pipe.get('Pipe Type') == value]
         
-        data = pipe_data.get(value, {"ref": "xxx-xxx-xxx", "supplier": "xxxxxxxx"})
-        self.ref_number = data["ref"]
-        self.supplier_value = data["supplier"]
+        # Update diameter dropdown options
+        self._update_diameter_options()
+        
+        # Update ref and supplier info
+        self._update_pipe_info()
+    
+    def _on_diameter_change(self, value):
+        """Update type options and ref/supplier based on diameter selection"""
+        if value == "Select diameter":
+            return
+            
+        # Filter pipe data by selected diameter
+        try:
+            selected_diameter = float(value)
+            self.filtered_data = [pipe for pipe in self.pipe_data if pipe.get('Diam. (mm)') == selected_diameter]
+            
+            # Update type dropdown options
+            self._update_type_options()
+            
+            # Update ref and supplier info
+            self._update_pipe_info()
+        except ValueError:
+            pass
+    
+    def _update_diameter_options(self):
+        """Update diameter dropdown options based on filtered data"""
+        diameters = set()
+        for pipe in self.filtered_data:
+            diameter = pipe.get('Diam. (mm)')
+            if diameter is not None:
+                diameters.add(str(diameter))
+        
+        diameter_options = sorted(list(diameters), key=lambda x: float(x)) if diameters else ["No data"]
+        self.diameter_dropdown.configure(values=diameter_options)
+        
+        # Reset diameter selection if current is not in new options
+        if self.diameter_var.get() not in diameter_options:
+            self.diameter_var.set("Select diameter")
+    
+    def _update_type_options(self):
+        """Update type dropdown options based on filtered data"""
+        pipe_types = set()
+        for pipe in self.filtered_data:
+            pipe_type = pipe.get('Pipe Type')
+            if pipe_type is not None:
+                pipe_types.add(str(pipe_type))
+        
+        type_options = sorted(list(pipe_types)) if pipe_types else ["No data"]
+        self.type_dropdown.configure(values=type_options)
+        
+        # Reset type selection if current is not in new options
+        if self.type_var.get() not in type_options:
+            self.type_var.set("Select type")
+    
+    def _update_pipe_info(self):
+        """Update ref and supplier info based on current selection"""
+        # Find matching pipe data
+        matching_pipes = []
+        current_type = self.type_var.get()
+        current_diameter = self.diameter_var.get()
+        
+        for pipe in self.filtered_data:
+            type_match = current_type == "Select type" or pipe.get('Pipe Type') == current_type
+            diameter_match = current_diameter == "Select diameter" or str(pipe.get('Diam. (mm)')) == current_diameter
+            
+            if type_match and diameter_match:
+                matching_pipes.append(pipe)
+        
+        # Update info with first matching pipe
+        if matching_pipes:
+            pipe = matching_pipes[0]
+            self.ref_number = str(pipe.get('Pipe Ref', 'xxx-xxx-xxx'))
+            self.supplier_value = str(pipe.get('Supplier', 'xxxxxxxx'))
+        else:
+            self.ref_number = "xxx-xxx-xxx"
+            self.supplier_value = "xxxxxxxx"
         
         # Update labels
+        self.ref_label.configure(text=f"Ref n° : {self.ref_number}")
+        self.supplier_label.configure(text=f"Supplier: {self.supplier_value}")
+    
+    def reset_selection(self):
+        """Reset type and diameter selections to show all options"""
+        # Reset filtered data to show all pipe data
+        self.filtered_data = self.pipe_data.copy() if self.pipe_data else []
+        
+        # Update both dropdowns to show all options
+        self._update_diameter_options()
+        self._update_type_options()
+        
+        # Reset selections
+        self.diameter_var.set("Select diameter")
+        self.type_var.set("Select type")
+        
+        # Reset ref and supplier info
+        self.ref_number = "xxx-xxx-xxx"
+        self.supplier_value = "xxxxxxxx"
         self.ref_label.configure(text=f"Ref n° : {self.ref_number}")
         self.supplier_label.configure(text=f"Supplier: {self.supplier_value}")
     
@@ -386,7 +515,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
         if diameter_value:
             self.diameter_var.set(str(diameter_value))
     
-        self.type_var.set(params.get('type', 'Placeholder'))
+        self.type_var.set(params.get('type', 'Select type'))
         self._on_type_change(params.get('type', ''))
         
         # Length - convert back from mm to display unit
@@ -435,7 +564,7 @@ class PipeConfigDialog(ctk.CTkToplevel):
             self._show_error("Please select a valid diameter")
             return
         
-        if self.type_var.get() == "Placeholder":
+        if self.type_var.get() == "Select type":
             self._show_error("Please select a pipe type")
             return
         

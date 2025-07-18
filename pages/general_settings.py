@@ -89,14 +89,8 @@ class GeneralSettings(ctk.CTkFrame):
         )
         self.liquid_name_label.grid(row=0, column=0, sticky="w", pady=10)
 
-        # Get fluid data from DataManager
-        fluid_data = controller.data_manager.get_fluids_data()
-        fluid_names = []
-        if fluid_data:
-            for item in fluid_data:
-                name = item.get('LLG Name')
-                if name:
-                    fluid_names.append(str(name))
+        # Get unique fluid names from DataManager
+        fluid_names = controller.data_manager.get_unique_fluid_names()
         
         # Fallback to default values if no data found
         if not fluid_names:

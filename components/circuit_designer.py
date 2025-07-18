@@ -652,6 +652,9 @@ class CircuitDesigner(ctk.CTkFrame):
                     params
                 )
             )
+            
+            # Bind dialog close event to reset connection state
+            dialog.bind("<Destroy>", lambda e: self.on_dialog_closed())
             # Don't reset connection state here
         else:
             # Cancel connection
@@ -671,6 +674,11 @@ class CircuitDesigner(ctk.CTkFrame):
         self.highlight_item(from_id, False)
         self.highlight_item(to_id, False)
         self.reset_connection_state()
+        
+        # Clear any selected components and reset mode
+        self.selected_component = None
+        if self.mode_selector:
+            self.mode_selector.set_mode("move")
     
     def create_connection(self, from_id, to_id, parameters=None):
         """Create a connection between two components"""
@@ -1013,6 +1021,16 @@ class CircuitDesigner(ctk.CTkFrame):
         if self.first_connection_item_id:
             self.highlight_item(self.first_connection_item_id, False)
             self.first_connection_item_id = None
+    
+    def on_dialog_closed(self):
+        """Handle when pipe configuration dialog is closed"""
+        # Reset connection state and clear selections
+        self.reset_connection_state()
+        self.selected_component = None
+        
+        # Reset mode to move
+        if self.mode_selector:
+            self.mode_selector.set_mode("move")
     
     def reset_drag_state(self):
         """Reset drag state"""
